@@ -208,6 +208,23 @@ function nextFrame() {
 /* ============================================================ 界面事件 */
 function startGreeting(id) {
   if (!greetEls.stage || !greetEls.video || !greetCtx) return;
+  // 移动端：不播全屏打招呼，开机/换人直接停留在网页开始页
+  if (isTouch) {
+    greetToken++;
+    greetFrozen = false;
+    greetActive = false;
+    cancelAnimationFrame(greetRaf);
+    clearTimeout(greetTimer);
+    try { greetEls.video.pause(); } catch { /* ignore */ }
+    greetEls.stage.classList.remove('is-showing');
+    greetEls.stage.classList.add('is-hidden');
+    greetEls.stage.setAttribute('aria-hidden', 'true');
+    if (rider) {
+      rider.group.visible = true;
+      rider.setShowcase(false);
+    }
+    return;
+  }
   const p = RIDER_PROFILES[id] || RIDER_PROFILES.xiaoman;
   const token = ++greetToken;
   greetFrozen = true;
