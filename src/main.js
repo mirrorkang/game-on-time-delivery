@@ -39,7 +39,7 @@ let toastFlags = {};
 let profile = RIDER_PROFILES.xiaoman;
 
 /* 选人打招呼：绿幕视频 → canvas 抠像 → 播完转回骑行背影 */
-const GREET_SRC = { alan: './assets/greet-boy.webm', xiaoman: './assets/greet-girl.webm' };
+const GREET_SRC = { alan: './assets/greet-boy.webm?v=3.1', xiaoman: './assets/greet-girl.webm?v=3.1' };
 const greetEls = {
   stage: document.querySelector('#greet-stage'),
   canvas: document.querySelector('#greet-canvas'),
