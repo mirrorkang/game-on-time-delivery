@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+<meta name="theme-color" content="#24372f" />
+<title>准时送达 · ON TIME — 外卖骑手狂飙</title>
+<meta name="description" content="城市晚高峰，骑上小电驴穿过车流，在晚霞里把奶茶准时送到。3D 外卖跑酷。" />
+<link rel="preload" href="./assets/rider-girl.glb" as="fetch" />
+<link rel="icon" type="image/svg+xml" href="./assets/favicon.svg" />
+<link rel="stylesheet" href="./styles.css" />
+<script type="importmap">
+{
+  "imports": {
+    "three": "./assets/vendor/three.module.js",
+    "three/addons/": "./assets/vendor/"
+  }
+}
+</script>
+</head>
+<body class="is-loading">
+<svg class="svg-sprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <symbol id="i-helmet" viewBox="0 0 24 24">
+    <path d="M4 14a8 8 0 0 1 16 0v2H4v-2Z" fill="currentColor"/>
+    <path d="M3 16h18" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
+    <path d="M8 13V9.5M16 13V9.5" stroke="#fff" stroke-opacity=".55" stroke-width="1.4" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="i-cup" viewBox="0 0 24 24">
+    <path d="M7 8h10l-1 12H8L7 8Z" fill="currentColor"/>
+    <path d="M6 8h12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+    <path d="M13 8 16 2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+    <circle cx="10" cy="13" r="1" fill="#fff" fill-opacity=".6"/>
+    <circle cx="13" cy="16" r="1" fill="#fff" fill-opacity=".6"/>
+    <circle cx="14.5" cy="12" r="1" fill="#fff" fill-opacity=".6"/>
+  </symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16" rx="1.4" fill="currentColor"/><rect x="14" y="4" width="4" height="16" rx="1.4" fill="currentColor"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 4.8v14.4L20 12 8 4.8Z" fill="currentColor"/></symbol>
+  <symbol id="i-sound" viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4V9Z" fill="currentColor"/><path d="M16 8c2 2 2 6 0 8M18.5 5.5c3.5 3.5 3.5 9.5 0 13" stroke="currentColor" stroke-width="1.9" fill="none" stroke-linecap="round"/></symbol>
+  <symbol id="i-mute" viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4V9Z" fill="currentColor"/><path d="m16 9 5 6M21 9l-5 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24"><path d="m12 2.6 2.8 6 6.6.8-4.9 4.5 1.3 6.5L12 17.3l-5.8 3.1 1.3-6.5L2.6 9.4l6.6-.8 2.8-6Z" fill="currentColor"/></symbol>
+  <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z" fill="currentColor"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 2.5 20 6v6c0 5-3.4 8.2-8 9.5-4.6-1.3-8-4.5-8-9.5V6l8-3.5Z" fill="currentColor"/><path d="m8 12 3 3 5-6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-magnet" viewBox="0 0 24 24"><path d="M5 3v8a7 7 0 0 0 14 0V3h-4v8a3 3 0 0 1-6 0V3H5Z" fill="currentColor"/><path d="M5 7h4M15 7h4" stroke="#fff" stroke-width="2"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.6" fill="currentColor"/><path d="M12 7v5.4l3.4 2" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/></symbol>
+  <symbol id="i-arrow-l" viewBox="0 0 24 24"><path d="M14 5 7 12l7 7" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-arrow-r" viewBox="0 0 24 24"><path d="m10 5 7 7-7 7" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-jump" viewBox="0 0 24 24"><path d="M12 20V6m0 0-5 5m5-5 5 5" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 21h14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></symbol>
+  <symbol id="i-slide" viewBox="0 0 24 24"><path d="M12 4v14m0 0 5-5m-5 5-5-5" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 21h14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></symbol>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="m3 11 9-8 9 8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M5.5 10v10h5v-6h3v6h5V10" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+  <symbol id="i-restart" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.4-5.7M4 4v5h5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 2.5a7 7 0 0 0-7 7c0 5.2 7 12 7 12s7-6.8 7-12a7 7 0 0 0-7-7Z" fill="currentColor"/><circle cx="12" cy="9.5" r="2.6" fill="#fff"/></symbol>
+  <symbol id="i-scooter" viewBox="0 0 32 24"><circle cx="7" cy="18" r="3.4" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="25" cy="18" r="3.4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M7 18h8l4-9h5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M11 9h6M19 9h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+</svg>
+
+<div id="app">
+  <div id="scene-mount"></div>
+  <canvas id="speed-canvas"></canvas>
+  <div class="screen-fx" aria-hidden="true">
+    <div id="sun-flare"></div>
+    <div id="vignette"></div>
+    <div id="hit-flash"></div>
+    <div id="boost-veil"></div>
+    <div id="paper-grain"></div>
+  </div>
+
+  <!-- ============================== HUD ============================== -->
+  <div id="hud" class="is-hidden" aria-live="polite">
+    <div class="hud-top">
+      <div class="order-card">
+        <div class="order-head">
+          <span class="order-no">订单 <b>#A2087</b></span>
+          <span class="order-status"><i></i>配送中</span>
+        </div>
+        <div id="hearts" class="hearts">
+          <svg class="heart"><use href="#i-helmet"/></svg>
+          <svg class="heart"><use href="#i-helmet"/></svg>
+          <svg class="heart"><use href="#i-helmet"/></svg>
+        </div>
+        <div class="order-meta">
+          <span>里程 <b><span id="distance">0</span><small>m</small></b></span>
+          <span>用时 <b id="delivery-time">00:00</b></span>
+        </div>
+        <div class="stage-line">
+          <span id="stage-label">01 · 山区晨光</span>
+          <span id="stage-progress">0 / 700</span>
+        </div>
+        <div class="stage-bar"><i id="stage-fill"></i></div>
+      </div>
+
+      <div id="route-strip" class="route-strip" aria-hidden="true">
+        <span class="route-stop">山区</span>
+        <span class="route-stop">乡镇</span>
+        <span class="route-stop">城市</span>
+        <span class="route-rail"></span>
+        <i id="route-marker"><svg viewBox="0 0 32 24"><use href="#i-scooter"/></svg></i>
+      </div>
+
+      <div class="hud-right">
+        <div class="stat-stack">
+          <div class="stat"><span class="stat-label">奶茶</span><b><span id="cups">0</span><small>杯</small></b></div>
+          <div class="stat stat-tip"><span class="stat-label">小费</span><b>¥<span id="score">0</span></b></div>
+        </div>
+        <div class="hud-buttons">
+          <button id="btn-sound" class="icon-btn js-sound" type="button" aria-label="声音开关">
+            <svg class="ico-on"><use href="#i-sound"/></svg><svg class="ico-off"><use href="#i-mute"/></svg>
+          </button>
+          <button id="btn-pause" class="icon-btn" type="button" aria-label="暂停">
+            <svg><use href="#i-pause"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="combo-wrap" class="combo is-hidden">
+      <span class="combo-tag">连单</span>
+      <b class="combo-num">×<span id="combo-value">1</span></b>
+      <span class="combo-bar"><i id="combo-bar-fill"></i></span>
+    </div>
+
+    <div class="hud-bottom">
+      <div class="dash">
+        <div class="speedo">
+          <svg class="speedo-dial" viewBox="0 0 160 98">
+            <path class="speedo-track" pathLength="100" d="M 16 86 A 64 64 0 0 1 144 86" />
+            <path id="speed-arc" class="speedo-fill" pathLength="100" d="M 16 86 A 64 64 0 0 1 144 86" />
+          </svg>
+          <div class="speedo-read"><b id="speed-num">0</b><span>km/h</span></div>
+          <div class="dash-label">小电驴 · 时速</div>
+        </div>
+        <div id="boost-wrap" class="boost">
+          <div class="boost-head"><span>氮气</span><kbd>SHIFT</kbd></div>
+          <div class="boost-track"><i id="boost-fill"></i></div>
+          <div class="boost-hint">满格冲刺 · 撞碎障碍</div>
+        </div>
+      </div>
+
+      <div id="powerups" class="powerups">
+        <div id="powerup-shield" class="powerup is-hidden" data-kind="shield">
+          <svg><use href="#i-shield"/></svg><span class="powerup-name">头盔盾</span><i class="powerup-time"></i>
+        </div>
+        <div id="powerup-magnet" class="powerup is-hidden" data-kind="magnet">
+          <svg><use href="#i-magnet"/></svg><span class="powerup-name">吸奶茶</span><i class="powerup-time"></i>
+        </div>
+        <div id="powerup-nitro" class="powerup is-hidden" data-kind="nitro">
+          <svg><use href="#i-bolt"/></svg><span class="powerup-name">满氮气</span><i class="powerup-time"></i>
+        </div>
+        <div id="powerup-double" class="powerup is-hidden" data-kind="double">
+          <svg><use href="#i-clock"/></svg><span class="powerup-name">双倍小费</span><i class="powerup-time"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-layer" aria-live="assertive"></div>
+  <div id="float-layer" aria-hidden="true"></div>
+
+  <!-- ============================== 加载 ============================== -->
+  <section id="loading" class="screen overlay">
+    <div class="load-card">
+      <div class="load-brand">准时送达<small>ON TIME</small></div>
+      <p class="load-kicker">外卖已出发 · 正在给电驴充电</p>
+      <div class="load-track"><i id="loading-bar"></i></div>
+      <div class="load-meta"><span id="loading-pct">0%</span><span>别催，马上就好</span></div>
+      <p class="load-tip" id="load-tip">今天也要准时送达呀。</p>
+    </div>
+  </section>
+
+  <!-- ============================== 开始 ============================== -->
+  <section id="start-screen" class="screen overlay is-hidden">
+    <header class="start-head">
+      <div class="brand">
+        <span class="brand-cn">准时送达</span>
+        <span class="brand-en">ON&nbsp;TIME</span>
+      </div>
+      <div class="head-actions">
+        <span class="head-live"><i></i>今日爆单 · 30 分钟必达</span>
+        <button class="icon-btn js-sound" type="button" aria-label="声音开关">
+          <svg class="ico-on"><use href="#i-sound"/></svg><svg class="ico-off"><use href="#i-mute"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <div class="start-copy">
+      <p class="eyebrow"><span>城市晚高峰</span> 最后一单，准时送达</p>
+      <h1 class="game-title"><span>准时</span><span>送达</span><em class="stamp">30′</em></h1>
+      <p class="title-en">A CITY RUSH HOUR DELIVERY · ON TIME</p>
+      <p class="tagline">晚霞落在玻璃幕墙上——<br>穿过车流，把这一杯奶茶送到。</p>
+      <div class="start-cta">
+        <button id="btn-start" class="btn btn-primary" type="button">
+          <svg class="btn-ico"><use href="#i-scooter"/></svg>接单出发<kbd>ENTER</kbd>
+        </button>
+        <button id="btn-guide" class="btn btn-ghost" type="button">怎么玩</button>
+      </div>
+      <p class="record">本机最佳 <b id="best-distance">0 m</b> <span>·</span> 小费 <b id="best-score">¥0</b></p>
+    </div>
+
+    <div class="rider-picker">
+      <p class="picker-label">本次骑手</p>
+      <div id="rider-cards" class="rider-cards">
+        <button class="rider-card is-active" data-rider="xiaoman" type="button">
+          <span class="rider-thumb"><img src="./assets/portrait-xiaoman.jpg" alt="小满" /></span>
+          <span class="rider-info"><b>小满</b><small>城市晚高峰 · 薄荷涂装</small></span>
+          <span class="rider-check">✓</span>
+        </button>
+      </div>
+    </div>
+
+    <footer class="start-foot">
+      <div class="keys">
+        <span><kbd>A</kbd><kbd>D</kbd> 变道</span>
+        <span><kbd>SPACE</kbd> 跳跃</span>
+        <span><kbd>S</kbd> 滑铲</span>
+        <span><kbd>SHIFT</kbd> 氮气</span>
+      </div>
+      <div class="route-teaser"><span>城市晚高峰</span><i></i><span>最后一公里</span><i></i><span>准时送达</span></div>
+    </footer>
+
+    <div id="guide-panel" class="guide-panel is-hidden">
+      <button id="btn-guide-close" class="guide-close" type="button" aria-label="关闭">×</button>
+      <h3>晚高峰，怎么送？</h3>
+      <ul>
+        <li><b>自动前进。</b>左右变道躲开轿车、公交、施工围挡和外卖同行。</li>
+        <li><b>跳</b>过锥桶、施工横杆；<kbd>滑铲</kbd>钻过低门架。</li>
+        <li><b>连单</b>：连续吃奶茶不断，连单倍率越高，小费越多。</li>
+        <li><b>擦身而过</b>也有小费；<b>氮气</b>满格时撞碎障碍不受伤。</li>
+        <li>3 个头盔用完就超时。霓虹亮起，城市还在晚高峰。</li>
+      </ul>
+      <p class="guide-foot">键盘 / 触屏滑动都可以 · 按 <kbd>P</kbd> 暂停</p>
+    </div>
+  </section>
+
+  <!-- ============================== 暂停 ============================== -->
+  <section id="pause-screen" class="screen overlay is-hidden">
+    <div class="panel pause-panel">
+      <p class="panel-kicker">TEMPORARY BREAK</p>
+      <h2>靠边停一下</h2>
+      <p class="panel-sub">奶茶会凉，订单还在计时。</p>
+      <div class="panel-actions">
+        <button id="btn-resume" class="btn btn-primary" type="button">继续送单</button>
+        <button id="btn-restart-pause" class="btn btn-ghost" type="button">重新开始</button>
+        <button id="btn-quit" class="btn btn-text" type="button">回首页</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================== 失败 ============================== -->
+  <section id="gameover-screen" class="screen overlay is-hidden">
+    <div class="receipt gameover-receipt">
+      <div class="receipt-head">
+        <span>配送小票 · DELIVERY RECEIPT</span><b>NO. A2087</b>
+      </div>
+      <h2>订单超时了…</h2>
+      <p class="customer-note">顾客留言：“我的奶茶呢？”</p>
+      <div class="receipt-stats">
+        <div><span>配送里程</span><b><span id="go-distance">0</span> m</b></div>
+        <div><span>送达奶茶</span><b><span id="go-cups">0</span> 杯</b></div>
+        <div><span>最高连单</span><b>×<span id="go-combo">1</span></b></div>
+        <div class="big"><span>本单小费</span><b>¥<span id="go-score">0</span></b></div>
+      </div>
+      <div class="receipt-best">
+        <span>历史最佳 <b><span id="go-best">0</span> m</b></span>
+        <span id="go-newbest" class="newbest is-hidden">打破纪录！</span>
+      </div>
+      <div class="receipt-actions">
+        <button id="btn-restart" class="btn btn-primary" type="button">再来一单 <kbd>R</kbd></button>
+        <button id="btn-home" class="btn btn-ghost" type="button">回首页</button>
+      </div>
+      <div class="receipt-barcode" aria-hidden="true"></div>
+      <p class="receipt-foot">谢谢惠顾 · 下次一定准时</p>
+    </div>
+  </section>
+
+  <!-- ============================== 送达 ============================== -->
+  <section id="victory-screen" class="screen overlay is-hidden">
+    <div class="panel victory-panel">
+      <p class="panel-kicker">DELIVERED · ON TIME</p>
+      <h2>准时送达！</h2>
+      <div id="vic-stars" class="stars" aria-label="五星好评">
+        <svg><use href="#i-star"/></svg><svg><use href="#i-star"/></svg><svg><use href="#i-star"/></svg><svg><use href="#i-star"/></svg><svg><use href="#i-star"/></svg>
+      </div>
+      <p class="victory-sub">顾客已签收 · 五星好评</p>
+      <div class="victory-stats">
+        <div><span>总里程</span><b><span id="vic-distance">0</span> m</b></div>
+        <div><span>奶茶</span><b><span id="vic-cups">0</span> 杯</b></div>
+        <div><span>小费</span><b>¥<span id="vic-score">0</span></b></div>
+      </div>
+      <div class="panel-actions">
+        <button id="btn-endless" class="btn btn-primary" type="button">继续接单 · 加时赛</button>
+        <button id="btn-victory-home" class="btn btn-ghost" type="button">收工回家</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================== 触屏 ============================== -->
+  <div id="touch-ui" class="is-hidden">
+    <div class="touch-side touch-left">
+      <button class="touch-btn" data-action="left" type="button" aria-label="左变道"><svg><use href="#i-arrow-l"/></svg></button>
+      <button class="touch-btn" data-action="right" type="button" aria-label="右变道"><svg><use href="#i-arrow-r"/></svg></button>
+    </div>
+    <div class="touch-side touch-right">
+      <button class="touch-btn touch-mini" data-action="boost" type="button" aria-label="氮气"><svg><use href="#i-bolt"/></svg><span>氮气</span></button>
+      <button class="touch-btn touch-big" data-action="jump" type="button" aria-label="跳跃"><svg><use href="#i-jump"/></svg><span>跳</span></button>
+      <button class="touch-btn touch-big" data-action="slide" type="button" aria-label="滑铲"><svg><use href="#i-slide"/></svg><span>滑</span></button>
+    </div>
+  </div>
+
+  <div id="rotate-hint" class="is-hidden">
+    <svg viewBox="0 0 24 24"><rect x="6" y="2" width="12" height="20" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M9 18h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+    <span>横屏骑起来更爽</span>
+  </div>
+
+  <div id="fatal-error" class="screen overlay is-hidden">
+    <div class="panel">
+      <h2>电驴打不着火了</h2>
+      <p class="panel-sub" id="fatal-message">这个浏览器暂时不支持 WebGL。换 Chrome / Edge / Safari 最新版试试。</p>
+      <button class="btn btn-primary" type="button" onclick="location.reload()">重新点火</button>
+    </div>
+  </div>
+</div>
+
+<noscript><div class="noscript">需要开启 JavaScript 才能送单。</div></noscript>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
