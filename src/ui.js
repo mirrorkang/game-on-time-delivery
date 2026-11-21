@@ -27,7 +27,9 @@ export class UI {
       bioName: $('#bio-name'),
       bioTitle: $('#bio-title'),
       bioRole: $('#bio-role'),
-      bioStats: $('#bio-stats'),
+      bioAvatar: $('#bio-avatar'),
+      bioStatsLine: $('#bio-stats-line'),
+      greetAgain: $('#btn-greet-again'),
       bioSkillName: $('#bio-skill-name'),
       bioSkillDesc: $('#bio-skill-desc'),
       bioQuote: $('#bio-quote'),
@@ -74,6 +76,9 @@ export class UI {
       vic: {
         distance: $('#vic-distance'), cups: $('#vic-cups'), score: $('#vic-score'),
         stars: $('#vic-stars'),
+        riderImg: $('#vic-rider-img'), riderName: $('#vic-rider-name'),
+        riderTitle: $('#vic-rider-title'), riderLine: $('#vic-rider-line'),
+        riderSkill: $('#vic-rider-skill'),
       },
       toast: $('#toast-layer'),
       float: $('#float-layer'),
@@ -101,6 +106,7 @@ export class UI {
     onClick(this.el.startBtn, () => this.handlers.start?.());
     onClick(this.el.guideBtn, () => this.toggleGuide());
     onClick(this.el.guideClose, () => this.toggleGuide(false));
+    onClick(this.el.greetAgain, () => this.handlers.greet?.());
     onClick($('#btn-pause'), () => this.handlers.pause?.());
     onClick($('#btn-resume'), () => this.handlers.resume?.());
     onClick($('#btn-restart-pause'), () => this.handlers.restart?.());
@@ -115,13 +121,14 @@ export class UI {
       const card = e.target.closest('.rider-card');
       if (!card) return;
       const id = card.dataset.rider;
-      if (!id || id === this.rider) return;
-      this.rider = id;
-      localStorage.setItem(LS_RIDER, id);
-      this._applyRider();
+      if (!id) return;
+      if (id !== this.rider) {
+        this.rider = id;
+        localStorage.setItem(LS_RIDER, id);
+        this._applyRider();
+      }
+      // 点当前骑手也可以重播打招呼动画
       this.handlers.rider?.({ id });
-      const who = RIDER_PROFILES[id]?.name || '骑手';
-      this.toast(id === 'xiaoman' ? '奶茶妹：您的奶盖已到，请查收～' : '蓝小哥：让一让，蓝小哥过。', { type: 'good', duration: 1500 });
     });
     // 触屏 / 鼠标点按场景自动开始（开始页）
     this.el.start?.addEventListener('click', (e) => {
@@ -143,19 +150,27 @@ export class UI {
     if (this.el.riderBio) this.el.riderBio.dataset.rider = this.rider;
     if (this.el.bioName) this.el.bioName.textContent = profile.name;
     if (this.el.bioTitle) this.el.bioTitle.textContent = profile.title;
-    if (this.el.bioRole) this.el.bioRole.textContent = profile.role;
-    if (this.el.bioStats) {
-      $$('.bio-stat', this.el.bioStats).forEach((row) => {
-        const key = row.dataset.stat;
-        const value = profile.stats[key] ?? 0;
-        $('b', row).textContent = String(value);
-        $('em', row).style.width = `${value}%`;
-      });
+    if (this.el.bioRole) this.el.bioRole.textContent = profile.roleShort;
+    if (this.el.bioAvatar) {
+      this.el.bioAvatar.src = profile.id === 'alan' ? './assets/avatar-alan.jpg' : './assets/avatar-xiaoman.jpg';
+      this.el.bioAvatar.alt = profile.name;
+    }
+    if (this.el.bioStatsLine) {
+      const st = profile.stats;
+      this.el.bioStatsLine.textContent = `速度 ${st.速度} · 耐力 ${st.耐力} · 好评 ${st.好评} · 抗压 ${st.抗压}`;
     }
     if (this.el.bioSkillName) this.el.bioSkillName.textContent = profile.skill;
-    if (this.el.bioSkillDesc) this.el.bioSkillDesc.textContent = `${profile.skillType === 'active' ? '按 E：' : '被动：'}${profile.skillDesc}`;
-    if (this.el.bioQuote) this.el.bioQuote.textContent = `${profile.quote} ${profile.catchphrase}`;
+    if (this.el.bioSkillDesc) this.el.bioSkillDesc.textContent = profile.skillShort;
+    if (this.el.bioQuote) this.el.bioQuote.textContent = profile.catchphrase;
     if (this.el.goDefeat) this.el.goDefeat.textContent = profile.defeat;
+    if (this.el.vic.riderImg) {
+      this.el.vic.riderImg.src = profile.id === 'alan' ? './assets/portrait-alan.jpg' : './assets/portrait-xiaoman.jpg';
+      this.el.vic.riderImg.alt = profile.name;
+    }
+    if (this.el.vic.riderName) this.el.vic.riderName.textContent = profile.name;
+    if (this.el.vic.riderTitle) this.el.vic.riderTitle.textContent = profile.title;
+    if (this.el.vic.riderLine) this.el.vic.riderLine.textContent = profile.catchphrase;
+    if (this.el.vic.riderSkill) this.el.vic.riderSkill.textContent = profile.skillShort;
     this.setSkill({ name: profile.skill, type: profile.skillType, state: profile.skillType === 'passive' ? '被动' : '就绪', ratio: 1 });
   }
 
@@ -347,11 +362,18 @@ export class UI {
   }
 
   stageBanner(index) {
-    return this.toast(CFG.stageFullNames[index], {
-      type: 'stage',
-      sub: index === 0 ? '晨雾里的第一单' : index === 1 ? '前方：乡镇集市 · 人多车多' : '最后一公里 · 晚霞里的城市',
-      duration: 2600,
-    });
+    const isStart = index === 0;
+    const title = isStart
+      ? CFG.stageFullNames[0]
+      : index === 1
+        ? '恭喜你从山区穿越到乡镇！'
+        : '恭喜你从乡镇抵达城市！';
+    const sub = isStart
+      ? '晨雾里的第一单'
+      : index === 1
+        ? '乡镇集市 · 区域奖励 +250 · 到站补头盔'
+        : '城市送达 · 最后一公里 · 区域奖励 +250';
+    return this.toast(title, { type: 'stage', sub, duration: 2800 });
   }
 
   float(text, x, y, cls = '') {

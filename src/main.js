@@ -38,6 +38,30 @@ let fpsSamples = [];
 let toastFlags = {};
 let profile = RIDER_PROFILES.xiaoman;
 
+/* 选人打招呼：绿幕视频 → canvas 抠像 → 播完转回骑行背影 */
+const GREET_SRC = { alan: './assets/greet-boy.webm', xiaoman: './assets/greet-girl.webm' };
+const greetEls = {
+  stage: document.querySelector('#greet-stage'),
+  canvas: document.querySelector('#greet-canvas'),
+  video: document.querySelector('#greet-video'),
+  name: document.querySelector('#greet-name'),
+  line: document.querySelector('#greet-line'),
+  skip: document.querySelector('#greet-skip'),
+};
+const greetCtx = greetEls.canvas?.getContext('2d', { alpha: true, willReadFrequently: true }) || null;
+let greetToken = 0;
+let greetActive = false;
+let greetRaf = 0;
+let greetTimer = 0;
+let greetLastPaint = 0;
+let greetFrozen = false;
+greetEls.stage?.addEventListener('click', (e) => e.stopPropagation());
+greetEls.skip?.addEventListener('click', (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  if (greetActive || greetEls.stage?.classList.contains('is-showing')) finishGreeting(greetToken);
+});
+
 const cameraPos = new THREE.Vector3();
 const cameraLook = new THREE.Vector3();
 const tmpV = new THREE.Vector3();
@@ -152,6 +176,7 @@ async function boot() {
   camera.lookAt(cameraLook);
   ui.doneLoading();
   ui.showStart();
+  startGreeting(ui.rider);
   ui.setLoadingTip('今天也要准时送达呀。');
   ui.setStage(MVP.enabled ? MVP.stage : 0, 0);
   if (MVP.enabled) document.body.dataset.stage = String(MVP.stage + 1);
@@ -181,6 +206,90 @@ function nextFrame() {
 }
 
 /* ============================================================ 界面事件 */
+function startGreeting(id) {
+  if (!greetEls.stage || !greetEls.video || !greetCtx) return;
+  const p = RIDER_PROFILES[id] || RIDER_PROFILES.xiaoman;
+  const token = ++greetToken;
+  greetFrozen = true;
+  greetActive = false;
+  cancelAnimationFrame(greetRaf);
+  clearTimeout(greetTimer);
+  try { greetEls.video.pause(); } catch { /* ignore */ }
+  greetEls.name.textContent = p.name;
+  greetEls.line.textContent = p.quote;
+  greetEls.stage.classList.remove('is-hidden');
+  void greetEls.stage.offsetWidth;
+  greetEls.stage.classList.add('is-showing');
+  greetEls.stage.setAttribute('aria-hidden', 'false');
+  if (rider) {
+    rider.group.visible = false;
+    rider.setShowcase(true);
+  }
+  const video = greetEls.video;
+  video.onended = () => finishGreeting(token);
+  video.src = GREET_SRC[id] || GREET_SRC.xiaoman;
+  video.currentTime = 0;
+  video.load();
+  const finish = () => finishGreeting(token);
+  greetTimer = setTimeout(finish, 5600);
+  Promise.resolve(video.play()).then(() => {
+    if (token !== greetToken) return;
+    greetActive = true;
+    paintGreeting(performance.now());
+  }).catch(() => {
+    // 浏览器拦截自动播放时，不要卡住开始页
+    if (token === greetToken) setTimeout(finish, 500);
+  });
+}
+
+function paintGreeting(now) {
+  if (!greetActive || !greetEls.video || !greetCtx) return;
+  greetRaf = requestAnimationFrame(paintGreeting);
+  if (now - greetLastPaint < 31) return;
+  greetLastPaint = now;
+  const v = greetEls.video;
+  if (v.readyState < 2) return;
+  const w = greetEls.canvas.width;
+  const h = greetEls.canvas.height;
+  greetCtx.clearRect(0, 0, w, h);
+  // WebM 已经是带 alpha 的成品，直接画到画布，不需要实时抠像
+  greetCtx.drawImage(v, 0, 0, w, h);
+}
+
+function finishGreeting(token) {
+  if (token !== greetToken) return;
+  greetFrozen = false;
+  greetActive = false;
+  cancelAnimationFrame(greetRaf);
+  clearTimeout(greetTimer);
+  try { greetEls.video?.pause(); } catch { /* ignore */ }
+  greetEls.stage?.classList.remove('is-showing');
+  greetEls.stage?.setAttribute('aria-hidden', 'true');
+  setTimeout(() => {
+    if (token === greetToken) greetEls.stage?.classList.add('is-hidden');
+  }, 300);
+  if (rider) {
+    rider.group.visible = true;
+    rider.setShowcase(false);
+  }
+}
+
+function stopGreeting() {
+  greetToken++;
+  greetFrozen = false;
+  greetActive = false;
+  cancelAnimationFrame(greetRaf);
+  clearTimeout(greetTimer);
+  try { greetEls.video?.pause(); } catch { /* ignore */ }
+  greetEls.stage?.classList.remove('is-showing');
+  greetEls.stage?.classList.add('is-hidden');
+  greetEls.stage?.setAttribute('aria-hidden', 'true');
+  if (rider) {
+    rider.group.visible = true;
+    rider.setShowcase(false);
+  }
+}
+
 function setupUiHandlers() {
   ui.bind({
     start: startFromUser,
@@ -192,9 +301,10 @@ function setupUiHandlers() {
     sound: onSoundClick,
     rider: ({ id }) => {
       profile = RIDER_PROFILES[id] || RIDER_PROFILES.xiaoman;
-      if (rider) { rider.setRider(id); rider.setShowcase(true); }
+      if (rider) { rider.setRider(id); startGreeting(id); }
     },
     skill: useSkill,
+    greet: () => { if (rider) startGreeting(ui.rider); },
   });
 }
 
@@ -243,6 +353,7 @@ function togglePause() {
 
 /* ============================================================ 开局 / 重置 */
 function startRun() {
+  stopGreeting();
   resetRun();
   world.reset();
   entities.reset();
@@ -322,10 +433,9 @@ function startRun() {
     if (state === 'playing' && run.tutorialToken === token) ui.toast(text, { sub, type: 'info', duration: 1400 });
   }, delay);
   if (!MVP.enabled) {
-    hint(isTouch ? '左右滑动 · 变道' : 'A / D · 变道', '躲开落石、三轮车和小动物', 3000);
-    hint(isTouch ? '上滑 · 跳跃' : '空格 · 跳跃', '越过石头、木箱和锥桶', 6400);
-    hint(isTouch ? '下滑 · 滑铲' : 'S · 滑铲', '钻过低枝、遮阳棚和门架', 9800);
-    hint(isTouch ? '点氮气 · 向前冲' : 'Shift · 氮气', '踩加速带也能向前冲', 13200);
+    hint(isTouch ? '左右滑动 · 变道' : '← → 变道', isTouch ? '躲开车和石头' : 'A / D 也可以', 3000);
+    hint(isTouch ? '上滑跳 · 下滑铲' : '↑ 跳跃 · ↓ 滑铲', isTouch ? '高的跳，低的钻' : 'Space / S 也可以', 6400);
+    hint(isTouch ? '氮气键 · 技能键' : 'SHIFT 氮气 · E 技能', '满格冲刺，撞碎障碍', 9800);
   }
 }
 
@@ -574,7 +684,7 @@ function handleStage(index) {
   if (!run.stageBonus[index]) {
     run.stageBonus[index] = true;
     run.score += 250;
-    floatAt('区域奖励 +250', 0, 2.2, -8, 'is-good');
+    floatAt('恭喜穿越 +250', 0, 2.2, -8, 'is-good');
   }
   // 降低难度：到站补给一个头盔（最多 3 个）
   if (run.health < 3) {
@@ -960,6 +1070,7 @@ function loop(now) {
 }
 
 function updateStart(dt) {
+  if (greetFrozen) { fx.clearSpeedLines(); return; }
   world.update(dt, { distance: 0, speed: 4.2, time: globalTime, camera });
   rider.updateIdle(dt, globalTime);
   fx.setWorldSpeed(4.2);
@@ -1192,6 +1303,11 @@ function updateCamera(dt) {
   const speed01 = clamp(run.speed / 34, 0, 1);
   let targetFov = 54;
   if (state === 'start') {
+    if (greetFrozen) {
+      camera.position.copy(cameraPos);
+      camera.lookAt(cameraLook);
+      return;
+    }
     const t = globalTime;
     const portrait = innerHeight > innerWidth;
     const radius = portrait ? 8.4 : 5.2;

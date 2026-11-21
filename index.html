@@ -152,9 +152,9 @@
 
     <div class="hud-center">
       <div id="hud-keys" class="hud-keys">
-        <span><kbd>A</kbd><kbd>D</kbd> 变道</span>
-        <span><kbd>SPACE</kbd> 跳跃</span>
-        <span><kbd>S</kbd> 滑铲</span>
+        <span><kbd class="key-arrow"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6"/></svg></kbd><kbd class="key-arrow"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></kbd> 变道</span>
+        <span><kbd class="key-arrow"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg></kbd> 跳跃</span>
+        <span><kbd class="key-arrow"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6"/></svg></kbd> 滑铲</span>
         <span><kbd>SHIFT</kbd> 氮气</span>
         <span><kbd>E</kbd> 技能</span>
       </div>
@@ -213,62 +213,105 @@
       </div>
       <p class="record">本机最佳 <b id="best-distance">0 m</b> <span>·</span> 小费 <b id="best-score">¥0</b></p>
 
-      <div id="rider-bio" class="rider-bio">
-        <div class="bio-head">
-          <b id="bio-name">奶茶妹</b>
-          <span id="bio-title">奶盖特调</span>
-          <span id="bio-role">社交 · 好评 · 靠笑脸打天下</span>
-        </div>
-        <div class="bio-stats" id="bio-stats">
-          <div class="bio-stat" data-stat="速度"><span>速度</span><b>78</b><i><em></em></i></div>
-          <div class="bio-stat" data-stat="耐力"><span>耐力</span><b>72</b><i><em></em></i></div>
-          <div class="bio-stat" data-stat="好评"><span>好评</span><b>95</b><i><em></em></i></div>
-          <div class="bio-stat" data-stat="抗压"><span>抗压</span><b>85</b><i><em></em></i></div>
-        </div>
-        <p class="bio-skill"><b id="bio-skill-name">甜度加持</b><span id="bio-skill-desc">被动：好评 +40%，小费更高，有机会解锁隐藏小费</span></p>
-        <p class="bio-quote" id="bio-quote">“您的奶盖已到，请查收～”</p>
-      </div>
     </div>
 
     <div class="rider-picker">
-      <p class="picker-label">今天和谁一起送？</p>
+      <div id="rider-bio" class="rider-now">
+        <span class="rider-now-avatar"><img id="bio-avatar" src="./assets/avatar-xiaoman.jpg" alt="奶茶妹" /></span>
+        <div class="rider-now-copy">
+          <div class="bio-head">
+            <b id="bio-name">奶茶妹</b>
+            <span id="bio-title">奶盖特调</span>
+          </div>
+          <p class="bio-meta">
+            <em id="bio-role">社交 · 好评</em>
+            <span id="bio-stats-line">速度 78 · 耐力 72 · 好评 95 · 抗压 85</span>
+          </p>
+          <div class="bio-skill"><b id="bio-skill-name">甜度加持</b><span id="bio-skill-desc">被动 · 好评 +40%</span></div>
+          <p class="bio-quote" id="bio-quote">“记得摇一摇哦。”</p>
+        </div>
+        <button id="btn-greet-again" class="greet-again" type="button" aria-label="再打个招呼">挥手</button>
+      </div>
+      <div class="picker-divider"><span>今天和谁一起送？</span><i></i></div>
       <div id="rider-cards" class="rider-cards">
         <button class="rider-card" data-rider="alan" type="button">
-          <span class="rider-thumb"><img src="./assets/portrait-alan.jpg" alt="蓝小哥" /></span>
+          <span class="rider-thumb"><img src="./assets/avatar-alan.jpg" alt="蓝小哥" /></span>
           <span class="rider-info"><b>蓝小哥</b><small>冷萃骑士 · 蓝白涂装</small></span>
           <span class="rider-check">✓</span>
         </button>
         <button class="rider-card is-active" data-rider="xiaoman" type="button">
-          <span class="rider-thumb"><img src="./assets/portrait-xiaoman.jpg" alt="奶茶妹" /></span>
+          <span class="rider-thumb"><img src="./assets/avatar-xiaoman.jpg" alt="奶茶妹" /></span>
           <span class="rider-info"><b>奶茶妹</b><small>奶盖特调 · 薄荷涂装</small></span>
           <span class="rider-check">✓</span>
         </button>
       </div>
     </div>
 
+    <div id="greet-stage" class="greet-stage is-hidden" aria-hidden="true">
+      <div class="greet-shadow"></div>
+      <canvas id="greet-canvas" width="540" height="960"></canvas>
+      <div class="greet-bubble">
+        <span id="greet-name">奶茶妹</span>
+        <b id="greet-line">“您的奶盖已到，请查收～”</b>
+      </div>
+      <button id="greet-skip" class="greet-skip" type="button">跳过</button>
+      <video id="greet-video" muted playsinline preload="auto" aria-hidden="true"></video>
+    </div>
+
     <footer class="start-foot">
       <div class="keys">
-        <span><kbd>A</kbd><kbd>D</kbd> 变道</span>
-        <span><kbd>SPACE</kbd> 跳跃</span>
-        <span><kbd>S</kbd> 滑铲</span>
+        <span><kbd class="key-arrow"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6"/></svg></kbd><kbd class="key-arrow"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></kbd> 变道</span>
+        <span><kbd class="key-arrow"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg></kbd> 跳</span>
+        <span><kbd class="key-arrow"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6"/></svg></kbd> 滑</span>
         <span><kbd>SHIFT</kbd> 氮气</span>
         <span><kbd>E</kbd> 技能</span>
       </div>
       <div class="route-teaser"><span>山区</span><i></i><span>乡镇</span><i></i><span>城市</span></div>
     </footer>
 
-    <div id="guide-panel" class="guide-panel is-hidden">
+    <div id="guide-panel" class="guide-panel guide-v2 is-hidden">
       <button id="btn-guide-close" class="guide-close" type="button" aria-label="关闭">×</button>
-      <h3>三程路，怎么送？</h3>
-      <ul>
-        <li><b>自动前进。</b>左右变道躲开落石、三轮车、轿车和公交。</li>
-        <li><b>跳</b>过石头、菜筐、锥桶、木箱；<kbd>滑铲</kbd>钻过低树枝、遮阳棚和施工门架。</li>
-        <li><b>连单</b>：连续吃奶茶不断，连单倍率越高，小费越多；踩到路面的加速带会向前冲。</li>
-        <li><b>擦身而过</b>也有小费；<b>氮气</b>满格时撞碎障碍不受伤。</li>
-        <li><b>E 技能</b>：蓝小哥「蓝光闪送」8 秒提速 30%；奶茶妹「甜度加持」被动好评 +40%，可解锁隐藏小费。</li>
-        <li>头盔用完就超时。穿过隧道会从山野进入乡镇，再到城市；到站会补一个头盔。</li>
-      </ul>
-      <p class="guide-foot">键盘 / 触屏滑动都可以 · 按 <kbd>P</kbd> 暂停</p>
+      <div class="guide-head">
+        <div class="guide-title">
+          <h3>三程路，怎么送？</h3>
+          <span class="guide-chip">3 条就够</span>
+        </div>
+        <p class="guide-route">山野 → 乡镇 → 城市</p>
+      </div>
+      <div class="guide-cards">
+        <article class="guide-card">
+          <span class="guide-card-ico">
+            <svg><use href="#i-arrow-l"/></svg><svg><use href="#i-arrow-r"/></svg>
+          </span>
+          <h4>变道</h4>
+          <p>躲开石头和车</p>
+          <small><kbd class="key-arrow"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6"/></svg></kbd><kbd class="key-arrow"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></kbd> 或 <kbd>A</kbd><kbd>D</kbd></small>
+          <span class="guide-card-mark">↔</span>
+        </article>
+        <article class="guide-card">
+          <span class="guide-card-ico">
+            <svg><use href="#i-jump"/></svg><svg><use href="#i-slide"/></svg>
+          </span>
+          <h4>跳 / 滑铲</h4>
+          <p>高的跳，低的钻</p>
+          <small><kbd class="key-arrow"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg></kbd> / <kbd>SPACE</kbd> 跳 · <kbd class="key-arrow"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6"/></svg></kbd> / <kbd>S</kbd> 滑</small>
+          <span class="guide-card-mark">↕</span>
+        </article>
+        <article class="guide-card">
+          <span class="guide-card-ico guide-ico-helmet">
+            <svg><use href="#i-helmet"/></svg>
+          </span>
+          <h4>头盔</h4>
+          <p>撞掉 1 个，撞光结束</p>
+          <small>每 8 杯 / 到站补 1 个</small>
+          <span class="guide-card-mark">!</span>
+        </article>
+      </div>
+      <div class="guide-tip">💡 连送涨倍率 · 氮气撞碎障碍 · 隧道换场景 · 到站补头盔</div>
+      <div class="guide-bottom">
+        <span class="guide-keys"><kbd class="key-arrow"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6"/></svg></kbd><kbd class="key-arrow"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg></kbd><kbd class="key-arrow"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6"/></svg></kbd><kbd class="key-arrow"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></kbd> 或 <kbd>A</kbd><kbd>W</kbd><kbd>S</kbd><kbd>D</kbd> 操作 · <kbd>P</kbd> 暂停</span>
+        <span class="guide-touch">触屏：滑动 / 底部按钮</span>
+      </div>
     </div>
   </section>
 
@@ -317,20 +360,36 @@
   <!-- ============================== 送达 ============================== -->
   <section id="victory-screen" class="screen overlay is-hidden">
     <div class="panel victory-panel">
-      <p class="panel-kicker">DELIVERED · ON TIME</p>
-      <h2>准时送达！</h2>
-      <div id="vic-stars" class="stars" aria-label="五星好评">
-        <svg><use href="#i-star"/></svg><svg><use href="#i-star"/></svg><svg><use href="#i-star"/></svg><svg><use href="#i-star"/></svg><svg><use href="#i-star"/></svg>
+      <div class="victory-rider">
+        <div class="victory-rider-art">
+          <img id="vic-rider-img" src="./assets/portrait-xiaoman.jpg" alt="奶茶妹" />
+          <span class="victory-rider-stamp">DELIVERED</span>
+        </div>
+        <div class="victory-rider-meta">
+          <span class="victory-rider-kicker">本次骑手 · RIDER</span>
+          <b id="vic-rider-name">奶茶妹</b>
+          <span id="vic-rider-title">奶盖特调</span>
+          <p id="vic-rider-line">“记得摇一摇哦。”</p>
+          <small id="vic-rider-skill">被动 · 甜度加持</small>
+        </div>
       </div>
-      <p class="victory-sub">顾客已签收 · 五星好评</p>
-      <div class="victory-stats">
-        <div><span>总里程</span><b><span id="vic-distance">0</span> m</b></div>
-        <div><span>奶茶</span><b><span id="vic-cups">0</span> 杯</b></div>
-        <div><span>小费</span><b>¥<span id="vic-score">0</span></b></div>
-      </div>
-      <div class="panel-actions">
-        <button id="btn-endless" class="btn btn-primary" type="button">继续接单 · 加时赛</button>
-        <button id="btn-victory-home" class="btn btn-ghost" type="button">收工回家</button>
+      <div class="victory-main">
+        <p class="panel-kicker">DELIVERED · ON TIME</p>
+        <h2>准时送达！</h2>
+        <p class="victory-line">这一单，稳稳送到。</p>
+        <div id="vic-stars" class="stars" aria-label="五星好评">
+          <svg><use href="#i-star"/></svg><svg><use href="#i-star"/></svg><svg><use href="#i-star"/></svg><svg><use href="#i-star"/></svg><svg><use href="#i-star"/></svg>
+        </div>
+        <p class="victory-sub">顾客已签收 · 五星好评</p>
+        <div class="victory-stats">
+          <div><span>总里程</span><b><span id="vic-distance">0</span> m</b></div>
+          <div><span>奶茶</span><b><span id="vic-cups">0</span> 杯</b></div>
+          <div><span>小费</span><b>¥<span id="vic-score">0</span></b></div>
+        </div>
+        <div class="panel-actions">
+          <button id="btn-endless" class="btn btn-primary" type="button">继续接单 · 加时赛</button>
+          <button id="btn-victory-home" class="btn btn-ghost" type="button">收工回家</button>
+        </div>
       </div>
     </div>
   </section>
