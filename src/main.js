@@ -10,6 +10,7 @@ import { Rider } from './rider.js';
 import { Entities } from './entities.js';
 import { FX } from './fx.js';
 import { UI } from './ui.js';
+import { RIDER_PROFILES } from './riders.js';
 
 const silent = () => {};
 const SILENT_AUDIO = {
@@ -35,6 +36,7 @@ let globalTime = 0;
 let rafId = 0;
 let fpsSamples = [];
 let toastFlags = {};
+let profile = RIDER_PROFILES.xiaoman;
 
 const cameraPos = new THREE.Vector3();
 const cameraLook = new THREE.Vector3();
@@ -52,6 +54,7 @@ const run = {
   speedPenalty: 1, crashT: 0, arriveT: 0, arriveFired: false,
   nextSpawn: 80, nextPower: 210, dustT: 0, sparkT: 0, autoplay: false, stage: 0,
   endless: false, stageBonus: [false, false, false], healMilestone: 0,
+  skillCd: 0, skillActive: 0, riderId: 'xiaoman',
 };
 
 /* ============================================================ 启动 */
@@ -129,6 +132,8 @@ async function boot() {
   entities = new Entities(scene, fx);
   bindEntities();
   rider.setRider(MVP.enabled ? MVP.rider : ui.rider);
+  profile = RIDER_PROFILES[ui.rider] || RIDER_PROFILES.xiaoman;
+  rider.setShowcase(true);
   rider.setStage(MVP.enabled ? MVP.stage : 0);
   ui.setLoading(0.9, '正在把奶茶放进车筐…');
   await nextFrame();
@@ -185,7 +190,11 @@ function setupUiHandlers() {
     home: goHome,
     endless: continueEndless,
     sound: onSoundClick,
-    rider: ({ id }) => { if (rider) rider.setRider(id); },
+    rider: ({ id }) => {
+      profile = RIDER_PROFILES[id] || RIDER_PROFILES.xiaoman;
+      if (rider) { rider.setRider(id); rider.setShowcase(true); }
+    },
+    skill: useSkill,
   });
 }
 
@@ -239,8 +248,14 @@ function startRun() {
   entities.reset();
   rider.reset();
   rider.setRider(MVP.enabled ? MVP.rider : ui.rider);
+  profile = RIDER_PROFILES[ui.rider] || RIDER_PROFILES.xiaoman;
+  rider.setShowcase(false);
   rider.setStage(MVP.enabled ? MVP.stage : 0);
+  run.riderId = profile.id;
+  run.skillCd = 0;
+  run.skillActive = 0;
   ui.resetGame();
+  ui.setSkill({ name: profile.skill, type: profile.skillType, state: profile.skillType === 'passive' ? '被动' : '就绪', ratio: 1 });
   ui.beginGame();
   ui.setHearts(run.health);
   ui.setScore(0);
@@ -281,7 +296,7 @@ function startRun() {
   }).catch(() => {});
   if (MVP.enabled) {
     // 单场景 MVP 的开局教学节奏：奶茶 → 轿车 → 锥桶线 → 门架
-    for (let i = 0; i < 6; i++) entities.spawnCup(1, -30 - i * 3.2, 1.05 + Math.sin((i / 5) * Math.PI) * 0.35);
+    for (let i = 0; i < 6; i++) entities.spawnCup(1, -30 - i * 3.2, 0.58 + Math.sin((i / 5) * Math.PI) * 0.28);
     entities.spawnObstacle('car', 1, -92);
     for (const l of [0, 1, 2]) entities.spawnObstacle('cone', l, -168);
     entities.spawnObstacle('gantry', 1, -245);
@@ -289,7 +304,7 @@ function startRun() {
     run.nextPower = 320;
   } else {
     // v2 三幕：轻松开局，先给奶茶，再给一条加速带，第一块石头 120m
-    for (let i = 0; i < 5; i++) entities.spawnCup(1, -42 - i * 3.2, 1.05);
+    for (let i = 0; i < 5; i++) entities.spawnCup(1, -42 - i * 3.2, 0.58);
     entities.spawnSpeedPad(1, -70);
     entities.spawnObstacle('rockSmall', 0, -120);
     run.nextSpawn = 150;
@@ -322,6 +337,7 @@ function resetRun() {
     speedPenalty: 1, crashT: 0, arriveT: 0, arriveFired: false,
     nextSpawn: 150, nextPower: 210, nextPad: 300, padT: 0, dustT: 0, sparkT: 0, stage: 0,
     endless: false, stageBonus: [false, false, false], healMilestone: 0,
+    skillCd: 0, skillActive: 0, riderId: profile?.id || 'xiaoman',
   });
   toastFlags = {};
 }
@@ -333,8 +349,14 @@ function goHome() {
   entities.reset();
   rider.reset();
   rider.setRider(MVP.enabled ? MVP.rider : ui.rider);
+  profile = RIDER_PROFILES[ui.rider] || RIDER_PROFILES.xiaoman;
+  rider.setShowcase(false);
   rider.setStage(MVP.enabled ? MVP.stage : 0);
+  run.riderId = profile.id;
+  run.skillCd = 0;
+  run.skillActive = 0;
   ui.resetGame();
+  ui.setSkill({ name: profile.skill, type: profile.skillType, state: profile.skillType === 'passive' ? '被动' : '就绪', ratio: 1 });
   ui.showStart();
   ui.setHearts(3);
   ui.setDistance(0);
@@ -451,6 +473,7 @@ function onKeyDown(e) {
     case 'KeyA': case 'ArrowLeft': rider.setLane(-1); break;
     case 'KeyD': case 'ArrowRight': rider.setLane(1); break;
     case 'ShiftLeft': case 'ShiftRight': doBoost(); break;
+    case 'KeyE': useSkill(); break;
     default: break;
   }
 }
@@ -489,6 +512,29 @@ function doBoost() {
   audio.playBoostStart?.();
   audio.playBoostLoop?.(true);
   ui.toast('氮气加速！', { sub: '撞碎前面的障碍', type: 'good', duration: 1300 });
+}
+
+function useSkill() {
+  if (state !== 'playing') return;
+  if (!profile || profile.skillType !== 'active') {
+    ui.toast('甜度加持 · 被动技能', { sub: '奶茶妹的好评率 +40%，小费更高', type: 'info', duration: 1200 });
+    return;
+  }
+  if (run.skillActive > 0) return;
+  if (run.skillCd > 0) {
+    ui.toast('技能冷却中', { sub: `${Math.ceil(run.skillCd)} 秒后可用`, type: 'info', duration: 900 });
+    return;
+  }
+  run.skillActive = 8;
+  run.skillCd = 90;
+  fx.ring({ x: rider.x, z: 0 }, 0x8fdcff, 3.8, 0.6);
+  fx.sparkBurst(new THREE.Vector3(rider.x, 0.7, 0.8), 28, 0x9fdcff, 1.3);
+  fx.addShake(0.25);
+  ensureAudioGesture();
+  audio.playBoostStart?.();
+  audio.playSpeedPad?.();
+  ui.setSkill({ name: profile.skill, type: 'active', state: '生效中', ratio: 1 });
+  ui.toast('蓝光闪送！', { sub: '8 秒提速 30% · 蓝的都到', type: 'good', duration: 1400 });
 }
 
 /* ============================================================ 实体回调 */
@@ -563,8 +609,12 @@ function handlePickup(cup) {
   run.combo = Math.min(8, run.combo + 1);
   run.maxCombo = Math.max(run.maxCombo, run.combo);
   run.comboTime = CFG.comboWindow;
-  const gain = 15 * run.combo * (run.double > 0 ? 2 : 1);
+  const gain = Math.round(15 * run.combo * (run.double > 0 ? 2 : 1) * (profile?.tipMul || 1));
   run.score += gain;
+  if (profile?.id === 'xiaoman' && Math.random() < 0.1) {
+    run.score += 150;
+    floatAt('隐藏小费 +150', cup.x, cup.y + 0.8, cup.z, 'is-good');
+  }
   run.boost = Math.min(100, run.boost + CFG.boost.pickupGain);
   fx.pickup(new THREE.Vector3(cup.x, cup.y, cup.z));
   audio.playPickup?.(run.combo);
@@ -681,6 +731,7 @@ function handleHit(item) {
     ui.toast('鸡飞狗跳…', { sub: '小心小动物', type: 'warn', duration: 1100 });
     return;
   }
+  entities.knock(item);
   applyDamage(false);
 }
 
@@ -690,7 +741,7 @@ function applyDamage(force = false) {
   if (run.shield > 0) { run.shield = 0; rider.setShield(false); }
   run.health -= 1;
   ui.setHearts(run.health);
-  run.invincible = 3.1;
+  run.invincible = 3.1 + (profile?.invulnBonus || 0);
   run.speedPenalty = 0.74;
   run.combo = 1;
   run.comboTime = 0;
@@ -705,7 +756,7 @@ function applyDamage(force = false) {
   if (run.health <= 0) {
     triggerCrash();
   } else {
-    ui.toast(`差评！头盔 -1`, { sub: '还有 ' + run.health + ' 个', type: 'bad', duration: 1400 });
+    ui.damageNote(run.health);
   }
   return true;
 }
@@ -859,7 +910,7 @@ function spawnCupLine(lane, n = 6, arc = false, z0 = -150) {
   const spacing = 3.3;
   for (let i = 0; i < n; i++) {
     const t = n <= 1 ? 0 : i / (n - 1);
-    const y = 1.05 + (arc ? Math.sin(t * Math.PI) * 1.0 : 0);
+    const y = 0.58 + (arc ? Math.sin(t * Math.PI) * 0.9 : 0);
     entities.spawnCup(lane, z0 - i * spacing, y);
   }
   if (arc && Math.random() < 0.6) {
@@ -928,6 +979,8 @@ function updatePlaying(dtReal) {
   let target = base;
   if (run.boosting) target *= CFG.boost.speedMul;
   if (run.padT > 0) target *= 1.22;
+  if (run.skillActive > 0) target *= 1.3;
+  target *= (profile?.speedMul || 1);
   target *= run.speedPenalty;
   if (run.endless) target = Math.min(40, target + 3 + Math.max(0, run.distance - 2100) * 0.002);
   run.speed = damp(run.speed, target, run.boosting ? 3.2 : 1.5, dt);
@@ -941,6 +994,8 @@ function updatePlaying(dtReal) {
   run.double = Math.max(0, run.double - dt);
   run.nitroFlash = Math.max(0, run.nitroFlash - dt);
   run.padT = Math.max(0, run.padT - dt);
+  if (run.skillActive > 0) run.skillActive = Math.max(0, run.skillActive - dt);
+  if (run.skillCd > 0) run.skillCd = Math.max(0, run.skillCd - dt);
   if (run.shield <= 0) rider.setShield(false);
   if (run.magnet <= 0) rider.setMagnet(false);
 
@@ -1038,7 +1093,7 @@ function finishVictory() {
   if (state !== 'arriving') return;
   state = 'victory';
   run.score += 500;
-  const stars = clamp(run.health + 2, 3, 5);
+  const stars = clamp(run.health + 2 + (profile?.starBonus || 0), 3, 5);
   const newBest = run.distance > ui.bestDistance || run.score > ui.bestScore;
   ui.setBest(run.distance, run.score);
   ui.victory({
@@ -1122,6 +1177,12 @@ function updateHud() {
   ui.setPowerup('magnet', run.magnet / 10);
   ui.setPowerup('double', run.double / 12);
   ui.setPowerup('nitro', run.nitroFlash / 1.4);
+  ui.setSkill({
+    name: profile?.skill || '技能',
+    type: profile?.skillType || 'passive',
+    state: profile?.skillType === 'passive' ? '被动' : (run.skillActive > 0 ? '生效中' : (run.skillCd > 0 ? `${Math.ceil(run.skillCd)}s` : '就绪')),
+    ratio: profile?.skillType === 'passive' ? 1 : (run.skillActive > 0 ? run.skillActive / 8 : (run.skillCd > 0 ? 1 - run.skillCd / 90 : 1)),
+  });
   document.body.classList.toggle('is-boostable', run.boost >= 99.5 && !run.boosting);
 }
 
@@ -1159,7 +1220,7 @@ function updateCamera(dt) {
     tmpV2.set(rider.x * 0.2, 1.15 + rider.y * 0.22, portrait ? -10.4 : -10.2);
     cameraPos.lerp(tmpV, 1 - Math.exp(-6.5 * dt));
     cameraLook.lerp(tmpV2, 1 - Math.exp(-9 * dt));
-    targetFov = (portrait ? 56 : 52) + speed01 * 8 + (run.boosting ? 6 : 0) + (run.padT > 0 ? 5 : 0);
+    targetFov = (portrait ? 56 : 52) + speed01 * 8 + (run.boosting ? 6 : 0) + (run.padT > 0 ? 5 : 0) + (run.skillActive > 0 ? 4 : 0);
   }
   camera.position.copy(cameraPos);
   camera.position.x += (fx?.shakeX || 0) * 0.55;
@@ -1215,7 +1276,7 @@ const NeonAPI = {
       state, distance: run.distance, score: Math.round(run.score), cups: run.cups,
       combo: run.combo, health: run.health, speed: run.speed, boost: run.boost,
       stage: world?.stage ?? 0, y: rider?.y ?? 0, lane: rider?.lane ?? 1, fps: fpsSamples.length,
-      sliding: !!rider?.sliding, jumping: !!(rider && !rider.onGround), boosting: !!run.boosting, boostTimer: run.boostTimer, padT: run.padT,
+      sliding: !!rider?.sliding, jumping: !!(rider && !rider.onGround), boosting: !!run.boosting, boostTimer: run.boostTimer, padT: run.padT, skillCd: run.skillCd, skillActive: run.skillActive, riderId: run.riderId,
     };
   },
   fps() { return fpsSamples.length; },

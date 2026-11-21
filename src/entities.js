@@ -372,7 +372,7 @@ export class Entities {
     return item;
   }
 
-  spawnCup(lane, z = CFG.spawn.far, y = 1.05) {
+  spawnCup(lane, z = CFG.spawn.far, y = 0.58) {
     const g = this._take('cup', makeCup);
     const laneIdx = clamp(lane, 0, 2);
     const x = CFG.laneX[laneIdx];
@@ -387,8 +387,8 @@ export class Entities {
     const g = this._take('power_' + kind, () => makePowerup(kind));
     const laneIdx = clamp(lane, 0, 2);
     const x = CFG.laneX[laneIdx];
-    g.position.set(x, 1.25, z);
-    const item = { type: 'powerup', kind, group: g, poolKey: 'power_' + kind, lane: laneIdx, x, baseY: 1.25, y: 1.25, z, phase: Math.random() * 6.28, w: 0.9, d: 0.9 };
+    g.position.set(x, 0.95, z);
+    const item = { type: 'powerup', kind, group: g, poolKey: 'power_' + kind, lane: laneIdx, x, baseY: 0.95, y: 0.95, z, phase: Math.random() * 6.28, w: 0.9, d: 0.9 };
     this.active.push(item);
     return item;
   }
@@ -404,6 +404,16 @@ export class Entities {
     const item = { type: 'pad', group: g, poolKey: 'speedpad', lane: laneIdx, x, z, w: 2.6, d: 4.2, phase: Math.random() * 6.28 };
     this.active.push(item);
     return item;
+  }
+
+  knock(item) {
+    if (!item || item.dead || item.knock) return;
+    item.knock = {
+      vy: 2.8 + Math.random() * 1.8,
+      vx: (Math.random() - 0.5) * 4.2,
+      spin: (Math.random() - 0.5) * 9,
+      t: 0.62 + Math.random() * 0.18,
+    };
   }
 
   smash(item, direction = 1) {
@@ -443,6 +453,21 @@ export class Entities {
         const g = it.group;
         // 障碍必须跟随逻辑 z 滚动（此前只更新了逻辑坐标，模型停在生成点，是 P0！）
         g.position.z = it.z;
+        // 撞击后：障碍被撞飞、旋转、坠落，0.7s 内回收
+        if (it.knock) {
+          const k = it.knock;
+          k.t -= dt;
+          k.vy -= 22 * dt;
+          g.position.y += k.vy * dt;
+          g.position.x += k.vx * dt;
+          g.rotation.x += k.spin * 0.65 * dt;
+          g.rotation.z += k.spin * dt;
+          if (k.t <= 0 || g.position.y < -2.5) {
+            it.dead = true;
+            alive.push(it);
+            continue;
+          }
+        }
         // 小动物轻微摆动
         if (it.critter) {
           g.position.x = it.x + Math.sin(this.time * 3 + it.phase) * 0.18;

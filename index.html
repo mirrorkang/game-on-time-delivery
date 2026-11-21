@@ -149,6 +149,26 @@
         </div>
       </div>
     </div>
+
+    <div class="hud-center">
+      <div id="hud-keys" class="hud-keys">
+        <span><kbd>A</kbd><kbd>D</kbd> 变道</span>
+        <span><kbd>SPACE</kbd> 跳跃</span>
+        <span><kbd>S</kbd> 滑铲</span>
+        <span><kbd>SHIFT</kbd> 氮气</span>
+        <span><kbd>E</kbd> 技能</span>
+      </div>
+      <button id="btn-skill" class="skill-btn" type="button" aria-label="技能">
+        <span class="skill-ico"><svg><use href="#i-bolt"/></svg></span>
+        <span class="skill-text"><b id="skill-name">甜度加持</b><small id="skill-state">被动</small></span>
+        <i id="skill-fill"></i>
+      </button>
+    </div>
+
+    <div id="damage-note" class="damage-note is-hidden">
+      <b>差评！头盔 -1</b>
+      <small>还有 <span id="damage-left">2</span> 个</small>
+    </div>
   </div>
 
   <div id="toast-layer" aria-live="assertive"></div>
@@ -192,19 +212,35 @@
         <button id="btn-guide" class="btn btn-ghost" type="button">怎么玩</button>
       </div>
       <p class="record">本机最佳 <b id="best-distance">0 m</b> <span>·</span> 小费 <b id="best-score">¥0</b></p>
+
+      <div id="rider-bio" class="rider-bio">
+        <div class="bio-head">
+          <b id="bio-name">奶茶妹</b>
+          <span id="bio-title">奶盖特调</span>
+          <span id="bio-role">社交 · 好评 · 靠笑脸打天下</span>
+        </div>
+        <div class="bio-stats" id="bio-stats">
+          <div class="bio-stat" data-stat="速度"><span>速度</span><b>78</b><i><em></em></i></div>
+          <div class="bio-stat" data-stat="耐力"><span>耐力</span><b>72</b><i><em></em></i></div>
+          <div class="bio-stat" data-stat="好评"><span>好评</span><b>95</b><i><em></em></i></div>
+          <div class="bio-stat" data-stat="抗压"><span>抗压</span><b>85</b><i><em></em></i></div>
+        </div>
+        <p class="bio-skill"><b id="bio-skill-name">甜度加持</b><span id="bio-skill-desc">被动：好评 +40%，小费更高，有机会解锁隐藏小费</span></p>
+        <p class="bio-quote" id="bio-quote">“您的奶盖已到，请查收～”</p>
+      </div>
     </div>
 
     <div class="rider-picker">
       <p class="picker-label">今天和谁一起送？</p>
       <div id="rider-cards" class="rider-cards">
         <button class="rider-card" data-rider="alan" type="button">
-          <span class="rider-thumb"><img src="./assets/portrait-alan.jpg" alt="蓝莓" /></span>
-          <span class="rider-info"><b>蓝莓</b><small>蓝白涂装 · 海盐汽水</small></span>
+          <span class="rider-thumb"><img src="./assets/portrait-alan.jpg" alt="蓝小哥" /></span>
+          <span class="rider-info"><b>蓝小哥</b><small>冷萃骑士 · 蓝白涂装</small></span>
           <span class="rider-check">✓</span>
         </button>
         <button class="rider-card is-active" data-rider="xiaoman" type="button">
-          <span class="rider-thumb"><img src="./assets/portrait-xiaoman.jpg" alt="奶盖" /></span>
-          <span class="rider-info"><b>奶盖</b><small>薄荷涂装 · 甜奶盖</small></span>
+          <span class="rider-thumb"><img src="./assets/portrait-xiaoman.jpg" alt="奶茶妹" /></span>
+          <span class="rider-info"><b>奶茶妹</b><small>奶盖特调 · 薄荷涂装</small></span>
           <span class="rider-check">✓</span>
         </button>
       </div>
@@ -216,6 +252,7 @@
         <span><kbd>SPACE</kbd> 跳跃</span>
         <span><kbd>S</kbd> 滑铲</span>
         <span><kbd>SHIFT</kbd> 氮气</span>
+        <span><kbd>E</kbd> 技能</span>
       </div>
       <div class="route-teaser"><span>山区</span><i></i><span>乡镇</span><i></i><span>城市</span></div>
     </footer>
@@ -228,6 +265,7 @@
         <li><b>跳</b>过石头、菜筐、锥桶、木箱；<kbd>滑铲</kbd>钻过低树枝、遮阳棚和施工门架。</li>
         <li><b>连单</b>：连续吃奶茶不断，连单倍率越高，小费越多；踩到路面的加速带会向前冲。</li>
         <li><b>擦身而过</b>也有小费；<b>氮气</b>满格时撞碎障碍不受伤。</li>
+        <li><b>E 技能</b>：蓝小哥「蓝光闪送」8 秒提速 30%；奶茶妹「甜度加持」被动好评 +40%，可解锁隐藏小费。</li>
         <li>头盔用完就超时。穿过隧道会从山野进入乡镇，再到城市；到站会补一个头盔。</li>
       </ul>
       <p class="guide-foot">键盘 / 触屏滑动都可以 · 按 <kbd>P</kbd> 暂停</p>
@@ -256,6 +294,7 @@
       </div>
       <h2>订单超时了…</h2>
       <p class="customer-note">顾客留言：“我的奶茶呢？”</p>
+      <p class="rider-defeat" id="go-defeat">“小心，别洒了…… 啊，洒了。”</p>
       <div class="receipt-stats">
         <div><span>配送里程</span><b><span id="go-distance">0</span> m</b></div>
         <div><span>送达奶茶</span><b><span id="go-cups">0</span> 杯</b></div>

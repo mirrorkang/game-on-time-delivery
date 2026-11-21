@@ -5,8 +5,8 @@ import { CFG, clamp, damp } from './config.js';
 import { glowSprite, shadowTexture } from './artkit.js';
 
 export const RIDERS = {
-  alan: { id: 'alan', name: '蓝莓', url: './assets/rider.glb', weight: 0.62 },
-  xiaoman: { id: 'xiaoman', name: '奶盖', url: './assets/rider-girl.glb', weight: 0.38 },
+  alan: { id: 'alan', name: '蓝小哥', url: './assets/rider.glb', weight: 0.62 },
+  xiaoman: { id: 'xiaoman', name: '奶茶妹', url: './assets/rider-girl.glb', weight: 0.38 },
 };
 
 export class Rider {
@@ -151,6 +151,11 @@ export class Rider {
       }
     });
     return root;
+  }
+
+  setShowcase(on) {
+    this.showcase = !!on;
+    if (this.group) this.group.rotation.y = this.showcase ? Math.PI : 0;
   }
 
   setRider(id) {
@@ -360,6 +365,7 @@ export class Rider {
     this.time += dt;
     const bob = Math.sin(t * 1.6) * 0.012;
     this.group.position.set(this.x, bob, 0);
+    this.group.rotation.y = this.showcase ? Math.PI : 0;
     this.group.rotation.z = Math.sin(t * 0.7) * 0.008;
     this.tilt.rotation.x = Math.sin(t * 1.2) * 0.004;
     this.tilt.scale.set(1, 1, 1);

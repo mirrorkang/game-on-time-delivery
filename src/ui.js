@@ -1,5 +1,6 @@
 // ui.js — DOM/HUD 控制（不含 three.js）
 import { CFG, formatNum, formatClock } from './config.js';
+import { RIDER_PROFILES } from './riders.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -22,6 +23,21 @@ export class UI {
       bestDistance: $('#best-distance'),
       bestScore: $('#best-score'),
       riderCards: $('#rider-cards'),
+      riderBio: $('#rider-bio'),
+      bioName: $('#bio-name'),
+      bioTitle: $('#bio-title'),
+      bioRole: $('#bio-role'),
+      bioStats: $('#bio-stats'),
+      bioSkillName: $('#bio-skill-name'),
+      bioSkillDesc: $('#bio-skill-desc'),
+      bioQuote: $('#bio-quote'),
+      skillBtn: $('#btn-skill'),
+      skillName: $('#skill-name'),
+      skillState: $('#skill-state'),
+      skillFill: $('#skill-fill'),
+      damageNote: $('#damage-note'),
+      damageLeft: $('#damage-left'),
+      goDefeat: $('#go-defeat'),
       guide: $('#guide-panel'),
       guideBtn: $('#btn-guide'),
       guideClose: $('#btn-guide-close'),
@@ -93,6 +109,7 @@ export class UI {
     onClick($('#btn-home'), () => this.handlers.home?.());
     onClick($('#btn-endless'), () => this.handlers.endless?.());
     onClick($('#btn-victory-home'), () => this.handlers.home?.());
+    onClick(this.el.skillBtn, () => this.handlers.skill?.());
     $$('.js-sound').forEach((b) => onClick(b, () => this.handlers.sound?.()));
     this.el.riderCards?.addEventListener('click', (e) => {
       const card = e.target.closest('.rider-card');
@@ -103,7 +120,8 @@ export class UI {
       localStorage.setItem(LS_RIDER, id);
       this._applyRider();
       this.handlers.rider?.({ id });
-      this.toast(id === 'xiaoman' ? '奶盖：交给我吧！' : '蓝莓：这单稳了。', { type: 'good', duration: 1300 });
+      const who = RIDER_PROFILES[id]?.name || '骑手';
+      this.toast(id === 'xiaoman' ? '奶茶妹：您的奶盖已到，请查收～' : '蓝小哥：让一让，蓝小哥过。', { type: 'good', duration: 1500 });
     });
     // 触屏 / 鼠标点按场景自动开始（开始页）
     this.el.start?.addEventListener('click', (e) => {
@@ -118,9 +136,27 @@ export class UI {
   bind(handlers) { this.handlers = handlers || {}; }
 
   _applyRider() {
+    const profile = RIDER_PROFILES[this.rider] || RIDER_PROFILES.xiaoman;
+    this.profile = profile;
     $$('.rider-card', this.el.riderCards).forEach((c) => c.classList.toggle('is-active', c.dataset.rider === this.rider));
-    const name = this.rider === 'xiaoman' ? '奶盖' : '蓝莓';
-    if (this.el.dashLabel) this.el.dashLabel.textContent = `${name}的小电驴 · 时速`;
+    if (this.el.dashLabel) this.el.dashLabel.textContent = `${profile.name}的小电驴 · 时速`;
+    if (this.el.riderBio) this.el.riderBio.dataset.rider = this.rider;
+    if (this.el.bioName) this.el.bioName.textContent = profile.name;
+    if (this.el.bioTitle) this.el.bioTitle.textContent = profile.title;
+    if (this.el.bioRole) this.el.bioRole.textContent = profile.role;
+    if (this.el.bioStats) {
+      $$('.bio-stat', this.el.bioStats).forEach((row) => {
+        const key = row.dataset.stat;
+        const value = profile.stats[key] ?? 0;
+        $('b', row).textContent = String(value);
+        $('em', row).style.width = `${value}%`;
+      });
+    }
+    if (this.el.bioSkillName) this.el.bioSkillName.textContent = profile.skill;
+    if (this.el.bioSkillDesc) this.el.bioSkillDesc.textContent = `${profile.skillType === 'active' ? '按 E：' : '被动：'}${profile.skillDesc}`;
+    if (this.el.bioQuote) this.el.bioQuote.textContent = `${profile.quote} ${profile.catchphrase}`;
+    if (this.el.goDefeat) this.el.goDefeat.textContent = profile.defeat;
+    this.setSkill({ name: profile.skill, type: profile.skillType, state: profile.skillType === 'passive' ? '被动' : '就绪', ratio: 1 });
   }
 
   _applySound() {
@@ -339,6 +375,7 @@ export class UI {
     this.el.go.combo.textContent = String(combo);
     this.el.go.score.textContent = formatNum(score);
     this.el.go.best.textContent = formatNum(this.bestDistance);
+    if (this.el.goDefeat) this.el.goDefeat.textContent = this.profile?.defeat || '';
     this.el.gameover.classList.remove('is-hidden');
   }
 
@@ -361,6 +398,36 @@ export class UI {
     this.cache = {};
     this.el.toast.replaceChildren();
     this.el.float.replaceChildren();
+  }
+
+  setSkill({ name, type, state, ratio = 0 } = {}) {
+    const btn = this.el.skillBtn;
+    if (!btn) return;
+    const key = `${name}|${type}|${state}|${Math.round(ratio * 100)}`;
+    if (this.cache.skill === key) return;
+    this.cache.skill = key;
+    if (name) this.el.skillName.textContent = name;
+    if (state) this.el.skillState.textContent = state;
+    btn.classList.toggle('is-active', type === 'active' && state === '生效中');
+    btn.classList.toggle('is-passive', type === 'passive');
+    btn.classList.toggle('is-ready', type === 'active' && state === '就绪');
+    if (this.el.skillFill) this.el.skillFill.style.transform = `scaleX(${Math.max(0, Math.min(1, ratio))})`;
+  }
+
+  damageNote(remaining = 2) {
+    const note = this.el.damageNote;
+    if (!note) return;
+    this.el.damageLeft.textContent = String(Math.max(0, remaining));
+    note.classList.remove('is-hidden');
+    note.classList.remove('is-show');
+    // 触发重排以重播动画
+    void note.offsetWidth;
+    note.classList.add('is-show');
+    clearTimeout(this._damageTimer);
+    this._damageTimer = setTimeout(() => {
+      note.classList.remove('is-show');
+      setTimeout(() => note.classList.add('is-hidden'), 220);
+    }, 1500);
   }
 
   setNewBest(on) { this.el.go.newbest?.classList.toggle('is-hidden', !on); }
