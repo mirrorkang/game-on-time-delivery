@@ -1813,6 +1813,50 @@ export class AudioEngine {
     });
   }
 
+  /** 加速带：向前冲的 whoosh + 三连亮音，和氮气区分开。 */
+  playSpeedPad() {
+    this._safe((ctx) => {
+      const t = nowOf(ctx) + 0.004;
+      this._noise({
+        t,
+        dur: 0.46,
+        gain: 0.085,
+        filter: 'bandpass',
+        freq: 420,
+        freqEnd: 3600,
+        q: 0.75,
+        attack: 0.02,
+      });
+      this._voice({
+        t,
+        freq: 170,
+        freqEnd: 430,
+        dur: 0.28,
+        gain: 0.055,
+        type: 'sawtooth',
+        attack: 0.01,
+        lp: 760,
+        lpEnd: 3800,
+      });
+      const notes = [72, 76, 79];
+      for (let i = 0; i < notes.length; i += 1) {
+        this._voice({
+          t: t + 0.035 + i * 0.065,
+          freq: mtof(notes[i]),
+          dur: 0.42,
+          gain: 0.04,
+          wave: 'lead',
+          attack: 0.005,
+          lp: 6200,
+          lpEnd: 2200,
+          pan: i % 2 === 0 ? -0.22 : 0.22,
+          send: 0.2,
+        });
+      }
+      this._bell(mtof(84), t + 0.1, 0.55, 0.032, this._sfxBus, 0.15);
+    });
+  }
+
   playHeartbeat() {
     this._safe((ctx) => {
       const t = nowOf(ctx) + 0.004;

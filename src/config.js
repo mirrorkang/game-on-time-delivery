@@ -6,12 +6,12 @@ export const CFG = {
   stageEnds: [700, 1400, 2100],
   stageDists: [700, 700, 700],
   arrival: 2100,
-  stageNames: ['01 · 山区晨光', '02 · 乡镇集市', '03 · 城市黄昏'],
+  stageNames: ['01 · 山区晨光', '02 · 乡镇集市', '03 · 城市送达'],
   stageShorts: ['山区', '乡镇', '城市'],
-  stageFullNames: ['山区晨光', '乡镇集市', '城市晚高峰'],
-  baseSpeed: [15.5, 18.5, 19.5],
-  maxSpeed: [23, 27, 29],
-  speedRamp: [0.0075, 0.0085, 0.0095],
+  stageFullNames: ['山区晨光', '乡镇集市', '城市送达'],
+  baseSpeed: [13, 15.5, 18],
+  maxSpeed: [20, 23, 26],
+  speedRamp: [0.0045, 0.0052, 0.006],
   tunnelDist: [700, 1400],
   player: {
     width: 0.95,
@@ -21,16 +21,15 @@ export const CFG = {
     gravity: 22.5,
     laneLerp: 14,
   },
-  comboWindow: 4.5,
-  boost: { max: 100, drain: 28, speedMul: 1.35, duration: 3.6, pickupGain: 9, nearMissGain: 7 },
+  comboWindow: 5.5,
+  boost: { max: 100, drain: 28, speedMul: 1.3, duration: 4.0, pickupGain: 9, nearMissGain: 7 },
   spawn: { far: -150, recycle: 16 },
   maxHealth: 3,
   world: { skyRadius: 420, fogDensity: [0.0042, 0.0038, 0.0048] },
 };
 
-// MVP：单场景（城市黄昏）+ 单角色（小满）。把 enabled 改 false 即可恢复三幕/双角色。
-export const MVP = { enabled: true, stage: 2, rider: 'xiaoman' };
-CFG.stageNames[2] = '城市 · 晚高峰';
+// v2 三幕 / 双角色已恢复。保留 MVP 开关，便于后续做单场景演示。
+export const MVP = { enabled: false, stage: 2, rider: 'xiaoman' };
 
 export function stageAt(distance) {
   if (distance < CFG.stageStarts[1]) return 0;

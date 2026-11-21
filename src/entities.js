@@ -1,6 +1,6 @@
 // entities.js — 障碍、奶茶、道具的模型、对象池、生成与碰撞
 import * as THREE from 'three';
-import { C, glowSprite, shadowTexture, basicMat, mat, canvasTexture, put, cylMesh, sphereMesh, torusMesh, boxMesh, signTexture } from './artkit.js';
+import { C, glowSprite, shadowTexture, basicMat, mat, canvasTexture, put, cylMesh, sphereMesh, torusMesh, boxMesh, signTexture, signBoard, icoMesh } from './artkit.js';
 import * as NATURE from './props_nature.js';
 import * as TOWN from './props_town.js';
 import * as CITY from './props_city.js';
@@ -30,6 +30,10 @@ const DEFS = {
   scooter:     { w: 0.95, d: 2.0, y0: 0, y1: 1.2, prop: ['city', 'deliveryScooter'] },
   flowerBed:   { w: 1.5, d: 2.6, y0: 0, y1: 0.6, prop: ['city', 'flowerBed'] },
   gantry:      { w: 12.2, d: 0.6, y0: 1.3, y1: 2.7, prop: null, gate: true },
+  parcel:      { w: 1.1, d: 0.9, y0: 0, y1: 1.0, prop: null },
+  roadSign:    { w: 1.0, d: 0.8, y0: 0, y1: 1.15, prop: null },
+  barrel:      { w: 0.8, d: 0.8, y0: 0, y1: 0.95, prop: null },
+  log:         { w: 1.9, d: 0.7, y0: 0, y1: 0.65, prop: null },
 };
 
 const FALLBACK_COLORS = {
@@ -150,6 +154,118 @@ function makeGantry() {
   return g;
 }
 
+function makeParcel() {
+  const g = new THREE.Group();
+  const paper = 0xc9a06a, paperLt = 0xd8b27a, tape = 0xf2d7a0;
+  const b1 = boxMesh(1.02, 0.4, 0.74, paper, { radius: 0.04 });
+  put(g, b1, 0, 0.2, 0);
+  const b2 = boxMesh(0.82, 0.36, 0.62, paperLt, { radius: 0.04 });
+  put(g, b2, 0.06, 0.58, 0.02, 0, 0.18, 0);
+  const b3 = boxMesh(0.58, 0.3, 0.48, paper, { radius: 0.03 });
+  put(g, b3, -0.1, 0.9, 0, 0, 0.3, 0.02);
+  for (const [x, y, z, w, d] of [[0, 0.4, 0, 0.14, 0.76], [0.06, 0.58, 0.02, 0.12, 0.64], [-0.1, 0.9, 0, 0.1, 0.5]]) {
+    put(g, boxMesh(w, 0.012, d, tape), x, y, z);
+  }
+  const label = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.26), basicMat(0xfff8e8, { toneMapped: false }));
+  put(g, label, 0.16, 0.58, 0.34);
+  return g;
+}
+
+function makeRoadSign() {
+  const g = new THREE.Group();
+  const wood = 0x9a7a55, dark = 0x5d4938, orange = 0xe4713f;
+  for (const s of [-1, 1]) {
+    put(g, boxMesh(0.1, 1.05, 0.1, wood), s * 0.38, 0.52, 0, 0, 0, s * 0.16);
+  }
+  put(g, boxMesh(0.86, 0.1, 0.1, dark), 0, 1.0, 0, 0, 0, 0);
+  const board = new THREE.Mesh(new THREE.PlaneGeometry(0.86, 0.62), new THREE.MeshBasicMaterial({
+    map: signTexture('慢行', { width: 256, height: 192, bg: orange, fg: 0xfff4dc, fontSize: 76 }),
+    transparent: true, side: THREE.DoubleSide, toneMapped: false,
+  }));
+  board.position.set(0, 0.78, 0.06);
+  g.add(board);
+  put(g, boxMesh(0.12, 0.06, 0.12, 0xffd45e, { emissive: 0xffb020, emissiveIntensity: 0.3 }), 0, 1.13, 0);
+  return g;
+}
+
+function makeBarrel() {
+  const g = new THREE.Group();
+  put(g, cylMesh(0.32, 0.36, 0.9, 0xe4713f, { segments: 10 }), 0, 0.45, 0);
+  for (const y of [0.22, 0.55, 0.82]) put(g, cylMesh(0.34, 0.34, 0.09, 0xf7efe2, { segments: 10 }), 0, y, 0);
+  put(g, cylMesh(0.26, 0.3, 0.08, 0x3e4143, { segments: 10 }), 0, 0.9, 0);
+  put(g, boxMesh(0.5, 0.05, 0.5, 0x3e4143, { radius: 0.02 }), 0, 0.025, 0);
+  return g;
+}
+
+function makeFallenLog() {
+  const g = new THREE.Group();
+  const trunk = cylMesh(0.28, 0.32, 1.8, 0x8a5d3f, { segments: 9 });
+  put(g, trunk, 0, 0.32, 0, 0, 0, Math.PI / 2);
+  for (const s of [-1, 1]) {
+    const cap = cylMesh(0.29, 0.29, 0.06, 0xd8b68a, { segments: 9 });
+    put(g, cap, s * 0.92, 0.32, 0, 0, 0, Math.PI / 2);
+  }
+  put(g, cylMesh(0.06, 0.09, 0.42, 0x6f4a33, { segments: 5 }), 0.2, 0.6, 0.1, 0, 0, 0.7);
+  put(g, icoMesh(0.3, 0x6f9a4e, { detail: 0, flatShading: true }), -0.45, 0.55, 0.06).scale.set(1.3, 0.5, 0.9);
+  return g;
+}
+
+let padTexture = null;
+function makeSpeedPad() {
+  if (!padTexture) {
+    padTexture = canvasTexture(256, 384, (ctx, w, h) => {
+      ctx.clearRect(0, 0, w, h);
+      const g = ctx.createLinearGradient(0, h, 0, 0);
+      g.addColorStop(0, 'rgba(34,231,255,0.0)');
+      g.addColorStop(0.18, 'rgba(34,231,255,0.22)');
+      g.addColorStop(0.6, 'rgba(34,231,255,0.08)');
+      g.addColorStop(1, 'rgba(34,231,255,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.roundRect ? ctx.roundRect(18, 10, w - 36, h - 20, 28) : ctx.rect(18, 10, w - 36, h - 20);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(160,248,255,0.75)';
+      ctx.lineWidth = 7;
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(210,255,255,0.95)';
+      ctx.lineWidth = 24;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      for (let i = 0; i < 3; i++) {
+        const y = 95 + i * 82;
+        ctx.beginPath();
+        ctx.moveTo(w * 0.2, y + 44);
+        ctx.lineTo(w * 0.5, y - 22);
+        ctx.lineTo(w * 0.8, y + 44);
+        ctx.stroke();
+      }
+    }, { anisotropy: 4 });
+  }
+  const g = new THREE.Group();
+  const plane = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 3.6), new THREE.MeshBasicMaterial({
+    map: padTexture, transparent: true, opacity: 0.55, depthWrite: false,
+    blending: THREE.AdditiveBlending, side: THREE.DoubleSide, toneMapped: false,
+  }));
+  plane.rotation.x = -Math.PI / 2;
+  plane.position.y = 0.035;
+  g.add(plane);
+  const glow = glowSprite(0x7fe8ff, 1.7, 0.22);
+  glow.position.set(0, 0.15, 0);
+  g.add(glow);
+  g.userData.padPlane = plane;
+  g.userData.padGlow = glow;
+  return g;
+}
+
+const CUSTOM_OBSTACLES = {
+  gantry: makeGantry,
+  parcel: makeParcel,
+  roadSign: makeRoadSign,
+  barrel: makeBarrel,
+  log: makeFallenLog,
+};
+const FACE_PLAYER = new Set(['roadSign', 'parcel', 'log']);
+
 const POWER_ICONS = {
   shield: { color: 0x6fc7b4, label: '盾' },
   magnet: { color: 0xe4574c, label: '吸' },
@@ -200,6 +316,7 @@ export class Entities {
     this.onPowerup = null;
     this.onNearMiss = null;
     this.onPass = null;
+    this.onPad = null;
     this.magnet = false;
   }
 
@@ -226,7 +343,7 @@ export class Entities {
   spawnObstacle(kind, lane, z = CFG.spawn.far, opts = {}) {
     const def = DEFS[kind] || DEFS.rock;
     const g = this._take(kind, () => {
-      const prop = kind === 'gantry' ? makeGantry() : getProp(kind, def);
+      const prop = CUSTOM_OBSTACLES[kind] ? CUSTOM_OBSTACLES[kind]() : getProp(kind, def);
       // 给车/障碍加接地影
       const sh = new THREE.Mesh(new THREE.PlaneGeometry(def.w * 1.5, def.d * 1.35), new THREE.MeshBasicMaterial({ map: shadowTexture(), transparent: true, opacity: 0.42, depthWrite: false, toneMapped: false }));
       sh.rotation.x = -Math.PI / 2; sh.position.y = 0.015; prop.add(sh);
@@ -235,7 +352,7 @@ export class Entities {
     const laneIdx = clamp(lane, 0, 2);
     const x = CFG.laneX[laneIdx];
     g.position.set(x, 0, z);
-    g.rotation.set(0, (def.gate || opts.facePlayer) ? 0 : Math.PI, 0);
+    g.rotation.set(0, (def.gate || FACE_PLAYER.has(kind) || opts.facePlayer) ? 0 : Math.PI, 0);
     if (def.gate) {
       // 门/树枝横跨车道：用道具 META 宽度精确拉伸到碰撞宽度，避免“看着有缝却撞上”
       const metaW = def.prop ? PROP_MODULES[def.prop[0]]?.META?.[def.prop[1]]?.w : null;
@@ -272,6 +389,19 @@ export class Entities {
     const x = CFG.laneX[laneIdx];
     g.position.set(x, 1.25, z);
     const item = { type: 'powerup', kind, group: g, poolKey: 'power_' + kind, lane: laneIdx, x, baseY: 1.25, y: 1.25, z, phase: Math.random() * 6.28, w: 0.9, d: 0.9 };
+    this.active.push(item);
+    return item;
+  }
+
+  spawnSpeedPad(lane, z = CFG.spawn.far) {
+    const g = this._take('speedpad', makeSpeedPad);
+    const laneIdx = clamp(lane, 0, 2);
+    const x = CFG.laneX[laneIdx];
+    g.position.set(x, 0, z);
+    g.rotation.set(0, 0, 0);
+    g.scale.set(1, 1, 1);
+    g.visible = true;
+    const item = { type: 'pad', group: g, poolKey: 'speedpad', lane: laneIdx, x, z, w: 2.6, d: 4.2, phase: Math.random() * 6.28 };
     this.active.push(item);
     return item;
   }
@@ -337,6 +467,18 @@ export class Entities {
             this.onPass?.(it);
           }
         }
+      } else if (it.type === 'pad') {
+        const g = it.group;
+        g.position.set(it.x, 0, it.z);
+        if (g.userData.padGlow) g.userData.padGlow.material.opacity = 0.16 + 0.1 * (0.5 + 0.5 * Math.sin(this.time * 5 + it.phase));
+        if (g.userData.padPlane) g.userData.padPlane.material.opacity = 0.46 + 0.14 * (0.5 + 0.5 * Math.sin(this.time * 5 + it.phase));
+        const dx = Math.abs(rb.x - it.x);
+        if (it.z > -2.4 && it.z < 2.4 && dx < 1.5) {
+          it.dead = true;
+          this.onPad?.(it);
+          this._release(it);
+          continue;
+        }
       } else if (it.type === 'cup') {
         const g = it.group;
         // 磁铁吸引
@@ -353,6 +495,7 @@ export class Entities {
         if (it.z > -1.7 && it.z < 1.8 && dx < 1.2 && dy < 1.9) {
           it.dead = true;
           this.onPickup?.(it);
+          this._release(it);
           continue;
         }
       } else if (it.type === 'powerup') {
@@ -365,6 +508,7 @@ export class Entities {
         if (it.z > -1.9 && it.z < 1.9 && dx < 1.25) {
           it.dead = true;
           this.onPowerup?.(it);
+          this._release(it);
           continue;
         }
       }

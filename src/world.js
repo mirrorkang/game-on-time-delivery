@@ -1,5 +1,6 @@
 // world.js — 三幕世界：天空、光照、道路、路边生态、隧道、终点、氛围粒子
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { CFG, clamp, MVP } from './config.js';
 import {
   C, mat, basicMat, boxMesh, cylMesh, coneMesh, sphereMesh, icoMesh, gableRoof, put,
@@ -96,6 +97,47 @@ function dotTexture() {
   });
 }
 
+/**
+ * 把静态道具的多个网格按材质合并，显著降低 draw calls。
+ * 带 userData.tick 的动画道具跳过；Sprite/Line/Points 保留。
+ */
+function mergeStaticGroup(group) {
+  if (!group || group.userData?.tick) return group;
+  if (group.userData?.noMerge) return group;
+  group.updateMatrixWorld(true);
+  const buckets = new Map();
+  const meshes = [];
+  group.traverse((o) => {
+    if (o === group) return;
+    if (o.isMesh && o.geometry && o.material && !Array.isArray(o.material) && !o.userData?.noMerge) {
+      meshes.push(o);
+      let b = buckets.get(o.material.uuid);
+      if (!b) { b = { material: o.material, geos: [], cast: false, receive: false }; buckets.set(o.material.uuid, b); }
+      const geo = o.geometry.clone();
+      const inv = new THREE.Matrix4().copy(group.matrixWorld).invert();
+      const local = new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld);
+      geo.applyMatrix4(local);
+      b.geos.push(geo);
+      b.cast = b.cast || o.castShadow;
+      b.receive = b.receive || o.receiveShadow;
+    }
+  });
+  if (meshes.length <= 1) return group;
+  for (const o of meshes) o.parent?.remove(o);
+  for (const [, b] of buckets) {
+    if (!b.geos.length) continue;
+    let geo = b.geos[0];
+    if (b.geos.length > 1) {
+      try { geo = mergeGeometries(b.geos, false) || b.geos[0]; } catch (e) { geo = b.geos[0]; }
+    }
+    const mesh = new THREE.Mesh(geo, b.material);
+    mesh.castShadow = b.cast;
+    mesh.receiveShadow = b.receive;
+    group.add(mesh);
+  }
+  return group;
+}
+
 export class World {
   constructor(scene, renderer, callbacks = {}) {
     this.scene = scene;
@@ -129,7 +171,7 @@ export class World {
     this._buildMotes();
     this._buildSlots();
     this._buildOverhead();
-    this._precache();
+    // 按需创建道具：不预生成全部三幕的隐藏物件，减少首帧矩阵/内存开销
     this._applyStage(this.stage, true);
   }
 
@@ -709,9 +751,9 @@ export class World {
   _buildSlots() {
     this.slots = [];
     const layers = [
-      { name: 'near', count: 17, gap: 14, start: 26, xBase: CFG.roadWidth / 2 + 0.9, xVar: 1.4 },
-      { name: 'mid', count: 12, gap: 25, start: 12, xBase: 12.8, xVar: 4.2 },
-      { name: 'far', count: 7, gap: 38, start: 0, xBase: 22, xVar: 8 },
+      { name: 'near', count: 13, gap: 18, start: 26, xBase: CFG.roadWidth / 2 + 0.9, xVar: 1.4 },
+      { name: 'mid', count: 9, gap: 33, start: 12, xBase: 12.8, xVar: 4.2 },
+      { name: 'far', count: 6, gap: 44, start: 0, xBase: 22, xVar: 8 },
     ];
     for (const layer of layers) {
       for (const side of [-1, 1]) {
@@ -756,24 +798,27 @@ export class World {
     }
   }
 
-  _acquire(kind) {
-    const arr = this.pools.get(kind);
+  _acquire(kind, simple = false) {
+    const key = simple ? kind + '#far' : kind;
+    const arr = this.pools.get(key);
     if (arr && arr.length) {
       const g = arr.pop();
       g.visible = true;
       return g;
     }
-    const g = this._factory(kind);
-    g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+    const g = simple ? this._fallbackProp(kind) : this._factory(kind);
+    g.traverse((o) => { if (o.isMesh) o.castShadow = !simple; });
+    mergeStaticGroup(g);
     this.scene.add(g);
     return g;
   }
 
-  _releaseGroup(kind, group) {
+  _releaseGroup(kind, group, simple = false) {
     if (!group) return;
     group.visible = false;
-    if (!this.pools.has(kind)) this.pools.set(kind, []);
-    this.pools.get(kind).push(group);
+    const key = simple ? kind + '#far' : kind;
+    if (!this.pools.has(key)) this.pools.set(key, []);
+    this.pools.get(key).push(group);
   }
 
   _pickKind(layer) {
@@ -797,10 +842,13 @@ export class World {
       if (e.group) { this._releaseGroup(e.kind, e.group); e.group = null; e.kind = null; }
       return;
     }
-    if (e.kind !== kind || !e.group) {
-      if (e.group) this._releaseGroup(e.kind, e.group);
+    const simple = e.layer === 'far';
+    if (e.kind !== kind || !e.group || e.simple !== simple) {
+      if (e.group) this._releaseGroup(e.kind, e.group, e.simple);
       e.kind = kind;
-      e.group = this._acquire(kind);
+      e.simple = simple;
+      e.group = this._acquire(kind, simple);
+      e.group.traverse((o) => { if (o.isMesh) o.castShadow = !simple; });
     }
     const meta = e.layerMeta;
     e.x = e.side * (meta.xBase + Math.random() * meta.xVar);
@@ -814,7 +862,7 @@ export class World {
 
   _rebuildSlots() {
     for (const e of this.slots) {
-      if (e.group) { this._releaseGroup(e.kind, e.group); e.group = null; e.kind = null; }
+      if (e.group) { this._releaseGroup(e.kind, e.group, e.simple); e.group = null; e.kind = null; }
     }
     for (const e of this.slots) this._assignEntry(e);
     for (const o of this.overhead) {
@@ -939,26 +987,35 @@ export class World {
     lightB.position.set(0, 6.6, 16);
     g.add(lightB);
     if (!city) {
-      // 隧道顶上的山体：整体抬高到天花板之上，绝不侵入隧道内部
-      for (let i = 0; i < 3; i++) {
-        const hill = icoMesh(1, i % 2 ? 0x5f7f4c : 0x6e8f58, { detail: 1, flatShading: true });
-        hill.scale.set(27 + i * 4, 10 + i * 2, 44);
-        hill.position.set(-10 + i * 10, H + 0.2 + (10 + i * 2), -4 + i * 5);
-        hill.castShadow = true;
-        g.add(hill);
-      }
+      // 山体做在洞口两侧和上方，落地成崖壁，避免一块“浮空绿石”
+      const cliffMat = new THREE.MeshStandardMaterial({ color: 0x6c7f50, roughness: 1, flatShading: true });
       for (const sx of [-1, 1]) {
-        const sideHill = icoMesh(1, sx > 0 ? 0x5a7a49 : 0x658553, { detail: 1, flatShading: true });
-        sideHill.scale.set(10, 12, 42);
-        sideHill.position.set(sx * 22, 4, -4);
-        sideHill.castShadow = true;
-        g.add(sideHill);
+        const cliff = new THREE.Mesh(new THREE.BoxGeometry(15, 19, 13), cliffMat);
+        cliff.position.set(sx * 17, 9.5, 35);
+        cliff.rotation.y = sx * 0.08;
+        cliff.castShadow = true;
+        g.add(cliff);
+        const boulder = icoMesh(1, sx > 0 ? 0x5b7046 : 0x687d4e, { detail: 1, flatShading: true });
+        boulder.scale.set(9, 7, 10);
+        boulder.position.set(sx * 18, 12, 37);
+        g.add(boulder);
       }
-      for (let i = 0; i < 9; i++) {
+      const roof = new THREE.Mesh(new THREE.BoxGeometry(41, 11, 13), cliffMat);
+      roof.position.set(0, 18.5, 35);
+      roof.castShadow = true;
+      g.add(roof);
+      for (let i = 0; i < 7; i++) {
         const tree = this._factory(i % 2 ? 'pineTree' : 'broadleafTree');
-        tree.scale.setScalar(0.7 + Math.random() * 0.5);
-        tree.position.set(-16 + Math.random() * 32, 18 + Math.random() * 7, -24 + Math.random() * 40);
+        tree.scale.setScalar(0.65 + Math.random() * 0.5);
+        tree.position.set(-17 + Math.random() * 34, 22 + Math.random() * 4, 26 + Math.random() * 22);
         g.add(tree);
+      }
+      // 洞口旁的几块石头，衔接崖壁
+      for (let i = 0; i < 4; i++) {
+        const rock = icoMesh(1, 0x677b4d, { detail: 1, flatShading: true });
+        rock.scale.set(2 + Math.random() * 2, 1.5 + Math.random() * 2, 2 + Math.random() * 2);
+        rock.position.set((i % 2 ? 1 : -1) * (11 + Math.random() * 3), 1 + Math.random() * 1.5, 40 - Math.random() * 4);
+        g.add(rock);
       }
     } else {
       // 高架桥面与人行道

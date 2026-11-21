@@ -19,7 +19,7 @@ const SILENT_AUDIO = {
   startEngine: silent, setSpeed: silent, stopEngine: silent,
   playJump: silent, playLand: silent, playSlide: silent, playPickup: silent,
   playPowerup: silent, playHit: silent, playNearMiss: silent, playBoostStart: silent,
-  playBoostLoop: silent, playHeartbeat: silent, playClick: silent, playCountdown: silent,
+  playBoostLoop: silent, playSpeedPad: silent, playHeartbeat: silent, playClick: silent, playCountdown: silent,
   playStageIntro: silent, playGameOver: silent, playVictory: silent,
 };
 let audio = SILENT_AUDIO;
@@ -80,13 +80,14 @@ async function boot() {
     ui.setFatal('浏览器没能创建 WebGL 画布。换个 Chrome / Edge / Safari 最新版试试。');
     return;
   }
-  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.75));
+  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.5));
   renderer.setSize(innerWidth, innerHeight);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.03;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.info.autoReset = false;
   renderer.domElement.style.filter = 'saturate(1.18) contrast(1.06) brightness(0.99)';
   mount.appendChild(renderer.domElement);
 
@@ -286,6 +287,15 @@ function startRun() {
     entities.spawnObstacle('gantry', 1, -245);
     run.nextSpawn = 280;
     run.nextPower = 320;
+  } else {
+    // v2 三幕：轻松开局，先给奶茶，再给一条加速带，第一块石头 120m
+    for (let i = 0; i < 5; i++) entities.spawnCup(1, -42 - i * 3.2, 1.05);
+    entities.spawnSpeedPad(1, -70);
+    entities.spawnObstacle('rockSmall', 0, -120);
+    run.nextSpawn = 150;
+    run.nextPower = 240;
+    run.nextPad = 360;
+    run.invincible = 1.6;
   }
   last = performance.now();
   ui.setLoadingTip('');
@@ -293,13 +303,14 @@ function startRun() {
   setTimeout(() => {
     if (state === 'playing' && run.tutorialToken === token) ui.stageBanner(MVP.enabled ? MVP.stage : 0);
   }, 650);
-  if (MVP.enabled) {
-    const hint = (text, sub, delay) => setTimeout(() => {
-      if (state === 'playing' && run.tutorialToken === token) ui.toast(text, { sub, type: 'info', duration: 1400 });
-    }, delay);
-    hint(isTouch ? '左右滑动 · 变道' : 'A / D · 变道', '躲开前方的轿车', 3300);
-    hint(isTouch ? '上滑 · 跳跃' : '空格 · 跳跃', '越过整排锥桶', 6800);
-    hint(isTouch ? '下滑 · 滑铲' : 'S · 滑铲', '钻过施工门架', 10200);
+  const hint = (text, sub, delay) => setTimeout(() => {
+    if (state === 'playing' && run.tutorialToken === token) ui.toast(text, { sub, type: 'info', duration: 1400 });
+  }, delay);
+  if (!MVP.enabled) {
+    hint(isTouch ? '左右滑动 · 变道' : 'A / D · 变道', '躲开落石、三轮车和小动物', 3000);
+    hint(isTouch ? '上滑 · 跳跃' : '空格 · 跳跃', '越过石头、木箱和锥桶', 6400);
+    hint(isTouch ? '下滑 · 滑铲' : 'S · 滑铲', '钻过低枝、遮阳棚和门架', 9800);
+    hint(isTouch ? '点氮气 · 向前冲' : 'Shift · 氮气', '踩加速带也能向前冲', 13200);
   }
 }
 
@@ -309,7 +320,7 @@ function resetRun() {
     boost: 100, boosting: false, boostTimer: 0, shield: 0, magnet: 0, double: 0, nitroFlash: 0,
     invincible: 0, elapsed: 0, maxCombo: 1, nearMisses: 0, slowT: 0,
     speedPenalty: 1, crashT: 0, arriveT: 0, arriveFired: false,
-    nextSpawn: 70, nextPower: 210, dustT: 0, sparkT: 0, stage: 0,
+    nextSpawn: 150, nextPower: 210, nextPad: 300, padT: 0, dustT: 0, sparkT: 0, stage: 0,
     endless: false, stageBonus: [false, false, false], healMilestone: 0,
   });
   toastFlags = {};
@@ -486,6 +497,7 @@ function bindEntities() {
   entities.onPickup = handlePickup;
   entities.onPowerup = handlePowerup;
   entities.onNearMiss = handleNearMiss;
+  entities.onPad = handleSpeedPad;
   rider.onLand = (impact) => {
     audio.playLand?.(impact);
     fx.dustBurst({ x: rider.x, y: 0.05, z: 0.25 }, 6 + Math.round(impact * 6), 0xd9c9a8, 0.9 + impact);
@@ -517,6 +529,12 @@ function handleStage(index) {
     run.stageBonus[index] = true;
     run.score += 250;
     floatAt('区域奖励 +250', 0, 2.2, -8, 'is-good');
+  }
+  // 降低难度：到站补给一个头盔（最多 3 个）
+  if (run.health < 3) {
+    run.health += 1;
+    ui.setHearts(run.health);
+    ui.toast('到站补给 +1 头盔', { sub: '还有 ' + run.health + ' 个', type: 'good', duration: 1500 });
   }
   document.body.classList.add('is-stage-flash');
   setTimeout(() => document.body.classList.remove('is-stage-flash'), 700);
@@ -551,7 +569,7 @@ function handlePickup(cup) {
   fx.pickup(new THREE.Vector3(cup.x, cup.y, cup.z));
   audio.playPickup?.(run.combo);
   floatAt(`+${gain}`, cup.x, cup.y + 0.35, cup.z, 'is-good');
-  if (run.cups - run.healMilestone >= 15) {
+  if (run.cups - run.healMilestone >= 8) {
     run.healMilestone = run.cups;
     if (run.health < 3) {
       run.health += 1;
@@ -602,6 +620,22 @@ function handleNearMiss(item, gap) {
   fx.addShake(0.08);
   audio.playNearMiss?.();
   floatAt(`擦身而过 +${gain}`, item.x, 1.5, item.z, 'is-near');
+}
+
+function handleSpeedPad(pad) {
+  run.padT = 1.6;
+  run.boost = Math.min(100, run.boost + 30);
+  run.score += 20;
+  fx.ring({ x: rider.x, z: 0.6 }, 0x8fe8ff, 3.4, 0.5);
+  fx.sparkBurst(new THREE.Vector3(rider.x, 0.4, 0), 22, 0x9fe8ff, 1.1);
+  fx.addShake(0.18);
+  audio.playSpeedPad?.();
+  floatAt('加速前进！', rider.x, 1.6, 0, 'is-good');
+  if (!run.padTToast) {
+    run.padTToast = true;
+    ui.toast('加速前进！', { sub: '轻点氮气按钮还能再冲一次', type: 'good', duration: 1100 });
+    setTimeout(() => { run.padTToast = false; }, 2200);
+  }
 }
 
 function handleHit(item) {
@@ -656,8 +690,8 @@ function applyDamage(force = false) {
   if (run.shield > 0) { run.shield = 0; rider.setShield(false); }
   run.health -= 1;
   ui.setHearts(run.health);
-  run.invincible = 2.2;
-  run.speedPenalty = 0.5;
+  run.invincible = 3.1;
+  run.speedPenalty = 0.74;
   run.combo = 1;
   run.comboTime = 0;
   run.boost = 0;
@@ -702,9 +736,9 @@ function endBoost() {
 
 /* ============================================================ 生成器 */
 const OBS = [
-  { low: ['rockSmall', 'fence'], tall: ['rock', 'hayCart', 'pothole', 'puddle'], jump: 'rockSmall', gate: 'branch', critter: 'chicken' },
-  { low: ['basket'], tall: ['tricycle', 'pothole', 'dog'], jump: 'basket', gate: 'awning', critter: 'chicken' },
-  { low: ['cone', 'barrier'], tall: ['car', 'taxi', 'bus', 'scooter', 'flowerBed'], jump: 'cone', gate: 'gantry', critter: null },
+  { low: ['rockSmall', 'fence', 'log'], tall: ['rock', 'hayCart', 'pothole', 'puddle', 'chicken'], jump: 'rockSmall', gate: 'branch', critter: 'chicken', works: ['fence', 'log'] },
+  { low: ['basket', 'parcel', 'log'], tall: ['tricycle', 'pothole', 'dog', 'roadSign'], jump: 'basket', gate: 'awning', critter: 'chicken', works: ['parcel', 'barrel'] },
+  { low: ['cone', 'parcel'], tall: ['car', 'taxi', 'bus', 'scooter', 'flowerBed', 'barrel', 'roadSign'], jump: 'cone', gate: 'gantry', critter: null, works: ['barrel', 'roadSign'] },
 ];
 
 function spawnPattern() {
@@ -713,63 +747,72 @@ function spawnPattern() {
   const table = OBS[s];
   const diff = clamp(run.distance / CFG.arrival, 0, 1);
   const z = -150;
-  const r = Math.random();
-  const free = [];
   const used = new Set();
   const randFrom = (arr) => arr[Math.floor(Math.random() * arr.length)];
   const chooseLane = (exclude = used) => {
     const lanes = [0, 1, 2].filter((l) => !exclude.has(l));
     return lanes.length ? lanes[Math.floor(Math.random() * lanes.length)] : null;
   };
+  const addCups = (n = 5, arc = false, off = 0) => {
+    const lane = chooseLane();
+    if (lane !== null) spawnCupLine(lane, n, arc, z + off);
+  };
 
-  if (r < 0.34) {
-    // 单/双障碍，留一条活路
-    const count = Math.random() < 0.28 + diff * 0.4 ? 2 : 1;
+  // v2：前 260m 只放一个单障碍 + 奶茶，先让玩家熟悉手感
+  if (run.distance < 260) {
+    const lane = Math.floor(Math.random() * 3);
+    const kind = Math.random() < 0.7 ? randFrom(table.low) : randFrom(table.tall.filter((k) => k !== 'bus'));
+    entities.spawnObstacle(kind, lane, z);
+    used.add(lane);
+    addCups(5, false, 4);
+    return;
+  }
+
+  const r = Math.random();
+  if (r < 0.32) {
+    // 单障碍（偶尔两个，留一条活路）
+    const count = Math.random() < 0.12 + diff * 0.22 ? 2 : 1;
     for (let i = 0; i < count; i++) {
       const lane = chooseLane();
       if (lane === null) break;
       used.add(lane);
-      const kind = Math.random() < 0.35 ? randFrom(table.low) : randFrom(table.tall);
+      const kind = Math.random() < 0.42 ? randFrom(table.low) : randFrom(table.tall);
       entities.spawnObstacle(kind, lane, z);
     }
-    const lane = chooseLane();
-    if (lane !== null && Math.random() < 0.55) spawnCupLine(lane, 4 + Math.floor(Math.random() * 4), false);
-  } else if (r < 0.48) {
-    // 全部车道低障碍：必须跳
-    const kind = table.jump;
+    addCups(4 + Math.floor(Math.random() * 3), false, 4);
+  } else if (r < 0.45) {
+    // 整排低障碍：必须跳
+    const kind = Math.random() < 0.25 && s < 2 ? 'log' : table.jump;
     for (const lane of [0, 1, 2]) entities.spawnObstacle(kind, lane, z);
-    if (Math.random() < 0.65) spawnCupLine(1, 5, true, z - 6);
-  } else if (r < 0.6) {
+    addCups(5, true, -6);
+  } else if (r < 0.55) {
     // 低门：必须滑铲
     entities.spawnObstacle(table.gate, 1, z);
-    if (Math.random() < 0.5) spawnCupLine(Math.random() < 0.5 ? 0 : 2, 4, false, z - 4);
-  } else if (r < 0.73) {
-    // 奶茶串
-    const lane = chooseLane();
-    spawnCupLine(lane, 6 + Math.floor(Math.random() * 4), Math.random() < 0.45);
-    if (Math.random() < 0.5 + diff * 0.2) {
-      const other = chooseLane(new Set([lane]));
-      if (other !== null) entities.spawnObstacle(Math.random() < 0.5 ? randFrom(table.low) : randFrom(table.tall), other, z - 2);
-    }
-  } else if (r < 0.85) {
-    // 小动物 / 路坑
-    if (table.critter && Math.random() < 0.55) {
+    addCups(4, false, -3);
+  } else if (r < 0.74) {
+    // 奶茶 / 奖励段
+    addCups(6 + Math.floor(Math.random() * 3), Math.random() < 0.4);
+    if (Math.random() < 0.32 + diff * 0.1) {
       const lane = chooseLane();
-      entities.spawnObstacle(table.critter, lane, z);
+      if (lane !== null) entities.spawnObstacle(randFrom(table.low), lane, z - 2);
+    }
+  } else if (r < 0.86) {
+    // 新增「施工区/路障」：两车道封路，留一条 + 奶茶
+    const lanes = [0, 1, 2].sort(() => Math.random() - 0.5).slice(0, 2);
+    entities.spawnObstacle(randFrom(table.works), lanes[0], z);
+    entities.spawnObstacle(randFrom(table.works), lanes[1], z - 4);
+    for (const l of lanes) used.add(l);
+    addCups(5, false, 2);
+  } else {
+    // 小动物 / 路坑 + 奖励
+    if (table.critter && Math.random() < 0.5) {
+      const lane = chooseLane();
+      if (lane !== null) entities.spawnObstacle(table.critter, lane, z);
     } else {
       const lane = chooseLane();
-      entities.spawnObstacle(Math.random() < 0.5 ? 'pothole' : 'puddle', lane, z);
+      if (lane !== null) entities.spawnObstacle(Math.random() < 0.5 ? 'pothole' : 'puddle', lane, z);
     }
-    spawnCupLine(chooseLane() ?? 1, 5, false);
-  } else {
-    // 双车道卡位 + 空档奶茶
-    const lanes = [0, 1, 2].sort(() => Math.random() - 0.5).slice(0, 2);
-    for (const lane of lanes) {
-      used.add(lane);
-      entities.spawnObstacle(randFrom(table.tall), lane, z);
-    }
-    const open = [0, 1, 2].find((l) => !used.has(l));
-    if (open !== undefined) spawnCupLine(open, 5, false, z - 2);
+    addCups(5, false, 0);
   }
 }
 
@@ -884,6 +927,7 @@ function updatePlaying(dtReal) {
   );
   let target = base;
   if (run.boosting) target *= CFG.boost.speedMul;
+  if (run.padT > 0) target *= 1.22;
   target *= run.speedPenalty;
   if (run.endless) target = Math.min(40, target + 3 + Math.max(0, run.distance - 2100) * 0.002);
   run.speed = damp(run.speed, target, run.boosting ? 3.2 : 1.5, dt);
@@ -896,6 +940,7 @@ function updatePlaying(dtReal) {
   run.magnet = Math.max(0, run.magnet - dt);
   run.double = Math.max(0, run.double - dt);
   run.nitroFlash = Math.max(0, run.nitroFlash - dt);
+  run.padT = Math.max(0, run.padT - dt);
   if (run.shield <= 0) rider.setShield(false);
   if (run.magnet <= 0) rider.setMagnet(false);
 
@@ -920,12 +965,16 @@ function updatePlaying(dtReal) {
 
   if (run.distance > run.nextSpawn) {
     spawnPattern();
-    const gap = Math.max(22, [42, 38, 31][world.stage] - Math.min(8, run.distance * 0.003) + Math.random() * 6);
+    const gap = Math.max(32, [52, 47, 40][world.stage] - Math.min(6, run.distance * 0.002) + Math.random() * 7);
     run.nextSpawn = run.distance + gap;
   }
   if (run.distance > run.nextPower) {
     spawnPowerup();
     run.nextPower = run.distance + 190 + Math.random() * 90;
+  }
+  if (run.distance > run.nextPad) {
+    entities.spawnSpeedPad(Math.floor(Math.random() * 3), -150);
+    run.nextPad = run.distance + 250 + Math.random() * 110;
   }
 
   world.update(dt, { distance: run.distance, speed: run.speed, time: globalTime, camera });
@@ -1026,22 +1075,33 @@ function emitRideFx(dt) {
 
 function doAutoplay() {
   if (!run.autoplay || !entities) return;
-  const obs = entities.active.filter((o) => o.type === 'obstacle' && !o.hit && o.z > -26 && o.z < -0.5);
+  const speed = Math.max(1, run.speed);
+  const obs = entities.active.filter((o) => o.type === 'obstacle' && !o.hit && !o.dead
+    && !o.def.harmless && !o.def.critter && o.z > -34 && o.z < -0.5);
   if (!obs.length) return;
   const cur = rider.lane;
+  // 横跨全路的门架：不论当前车道，都要滑铲
+  const gate = obs.filter((o) => o.def.gate).sort((a, b) => b.z - a.z)[0];
+  if (gate) {
+    const tg = -gate.z / speed;
+    if (tg < 0.85 && tg > 0 && rider.grounded && !rider.sliding) {
+      rider.slide();
+      return;
+    }
+  }
   const nearest = obs.filter((o) => o.lane === cur).sort((a, b) => b.z - a.z)[0];
   if (!nearest) return;
-  if (nearest.def.gate) {
-    if (nearest.z > -15 && rider.grounded) rider.slide();
-    return;
-  }
-  if (nearest.z > -13 && nearest.y1 <= 1.3 && rider.grounded) {
+  const t = -nearest.z / speed;
+  // 低障碍：按剩余时间起跳（不是按固定 z），避免提前落地
+  if (!nearest.def.gate && nearest.y1 <= 1.35 && t < (nearest.y1 > 1.0 ? 0.56 : 0.66) && rider.grounded) {
     doJump();
     return;
   }
-  if (nearest.z > -18) {
-    const danger = new Set(obs.filter((o) => o.z > -22).map((o) => o.lane));
-    const safe = [0, 1, 2].filter((l) => !danger.has(l) && Math.abs(l - cur) === 1);
+  if (t < 1.5) {
+    // 找一条未来 40m 内没有障碍的车道
+    const danger = new Set(obs.filter((o) => o.z > -40).map((o) => o.lane));
+    const safe = [0, 1, 2].filter((l) => l !== cur && !danger.has(l))
+      .sort((a, b) => Math.abs(a - cur) - Math.abs(b - cur));
     if (safe.length) rider.setLane(Math.sign(safe[0] - cur));
   }
 }
@@ -1053,7 +1113,7 @@ function updateHud() {
   ui.setScore(run.score);
   ui.setCups(run.cups);
   ui.setHearts(Math.max(0, run.health));
-  ui.setSpeed(run.speed * 3.6, clamp(run.speed / 38, 0, 1));
+  ui.setSpeed(run.speed * 3.6, clamp(run.speed / 30, 0, 1));
   ui.setBoost(run.boost / 100, run.boost >= 99.5 && !run.boosting, run.boosting);
   ui.setCombo(run.combo, run.comboTime / CFG.comboWindow);
   const stage = world?.stage ?? 0;
@@ -1099,7 +1159,7 @@ function updateCamera(dt) {
     tmpV2.set(rider.x * 0.2, 1.15 + rider.y * 0.22, portrait ? -10.4 : -10.2);
     cameraPos.lerp(tmpV, 1 - Math.exp(-6.5 * dt));
     cameraLook.lerp(tmpV2, 1 - Math.exp(-9 * dt));
-    targetFov = (portrait ? 56 : 52) + speed01 * 8 + (run.boosting ? 6 : 0);
+    targetFov = (portrait ? 56 : 52) + speed01 * 8 + (run.boosting ? 6 : 0) + (run.padT > 0 ? 5 : 0);
   }
   camera.position.copy(cameraPos);
   camera.position.x += (fx?.shakeX || 0) * 0.55;
@@ -1114,6 +1174,7 @@ function updateCamera(dt) {
 
 function renderFrame() {
   if (!composer) return;
+  renderer.info.reset();
   composer.render();
   if (state === 'playing' || state === 'crashing' || state === 'arriving') {
     fx.drawSpeedLines();
@@ -1154,7 +1215,7 @@ const NeonAPI = {
       state, distance: run.distance, score: Math.round(run.score), cups: run.cups,
       combo: run.combo, health: run.health, speed: run.speed, boost: run.boost,
       stage: world?.stage ?? 0, y: rider?.y ?? 0, lane: rider?.lane ?? 1, fps: fpsSamples.length,
-      sliding: !!rider?.sliding, jumping: !!(rider && !rider.onGround), boosting: !!run.boosting, boostTimer: run.boostTimer,
+      sliding: !!rider?.sliding, jumping: !!(rider && !rider.onGround), boosting: !!run.boosting, boostTimer: run.boostTimer, padT: run.padT,
     };
   },
   fps() { return fpsSamples.length; },
@@ -1188,6 +1249,11 @@ const NeonAPI = {
     entities.spawnObstacle(type, lane, z);
     return true;
   },
+  spawnPad(lane = 1, z = -18) {
+    if (!entities) return false;
+    entities.spawnSpeedPad(lane, z);
+    return true;
+  },
   spawnCups(lane = 1, z = -16, n = 6, arc = false) {
     if (!entities) return false;
     for (let i = 0; i < n; i++) entities.spawnCup(lane, z - i * 3.3, 1.05 + (arc ? Math.sin((i / Math.max(1, n - 1)) * Math.PI) * 1.0 : 0));
@@ -1216,10 +1282,28 @@ const NeonAPI = {
     const active = rider?.models?.[rider.riderId];
     return {
       state, riderPos: rider?.group.position.toArray(), riderScale: rider?.tilt.scale.toArray(),
-      activeVisible: active?.visible, invincible: rider?.invincible, camera: camera?.position.toArray(), fov: camera?.fov,
-      drawCalls: renderer?.info.render.calls, triangles: renderer?.info.render.triangles,
+      activeVisible: active?.visible, riderId: rider?.riderId, invincible: rider?.invincible, camera: camera?.position.toArray(), fov: camera?.fov,
+      drawCalls: renderer?.info.render.calls, triangles: renderer?.info.render.triangles, programs: renderer?.info.programs?.length,
       worldSpeed: run.speed, stage: world?.stage,
     };
+  },
+  setShadows(on) {
+    renderer.shadowMap.enabled = !!on;
+    world.sun.castShadow = !!on;
+    return !!on;
+  },
+  setBloom(on) {
+    bloomPass.enabled = !!on;
+    return !!on;
+  },
+  debugWorld() {
+    if (!world) return null;
+    let meshes = 0, inst = 0, sprites = 0, casting = 0;
+    scene.traverse((o) => {
+      if (o.isMesh) { meshes++; if (o.isInstancedMesh) inst++; if (o.castShadow) casting++; }
+      else if (o.isSprite) sprites++;
+    });
+    return { slots: world.slots.length, meshes, inst, sprites, casting, drawCalls: renderer.info.render.calls, tris: renderer.info.render.triangles };
   },
   setStage(n) {
     if (!world) return false;

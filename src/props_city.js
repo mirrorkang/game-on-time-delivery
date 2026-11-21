@@ -111,7 +111,7 @@ function towerMesh(w, h, d, key, radius = 0) {
 /* ——— 广告屏 Canvas（比单纯文字牌更像真实广告） ——— */
 const ADS = {
   tea: {
-    text: '茶小满', sub: '鲜果茶 · 第二杯半价', badge: '新品尝鲜', mark: '茶',
+    text: '奶盖茶铺', sub: '鲜果茶 · 第二杯半价', badge: '新品尝鲜', mark: '茶',
     kicker: 'CITY TEA · 手作鲜果茶', c1: '#f78fb3', c2: '#e2566f', fg: '#fff8e8', accent: '#ffd9a0',
   },
   delivery: {
@@ -1057,7 +1057,7 @@ export function bus(opts = {}) {
   }), 1.29, 1.25, 4.05, 0, Math.PI / 2, 0);
   // 车侧广告条（奶茶 / 城市生活），给车身加点烟火气
   for (const side of [-1, 1]) {
-    put(g, signPanel(2.9, 0.38, '茶小满 · 好喝不贵', {
+    put(g, signPanel(2.9, 0.38, '奶盖茶铺 · 好喝不贵', {
       texW: 1024, texH: 160, bg: 0xe2566f, fg: 0xfff4dc, glow: true, glowIntensity: 0.28, radius: 10,
     }), side * 1.292, 1.2, -1.2, 0, side * Math.PI / 2, 0);
   }
@@ -1325,7 +1325,7 @@ export function cityBackdrop(opts = {}) {
     texW: 512, texH: 160, bg: C.signBlue, fg: 0xfff4dc, glow: true, glowIntensity: 0.85, radius: 10,
   }), -37, 9.42, 1.38);
   put(g, boxMesh(3.0, 0.85, 0.16, 0x8a6b5a), 37, 8.42, 1.28);
-  put(g, signPanel(2.8, 0.68, '茶小满', {
+  put(g, signPanel(2.8, 0.68, '奶盖茶铺', {
     texW: 512, texH: 160, bg: 0xe2566f, fg: 0xfff4dc, glow: true, glowIntensity: 0.85, radius: 10,
   }), 37, 8.42, 1.38);
   // 楼顶小天线

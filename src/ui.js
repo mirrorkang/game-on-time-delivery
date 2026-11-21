@@ -13,6 +13,7 @@ export class UI {
   constructor() {
     const el = this.el = {
       body: document.body,
+      dashLabel: $('.dash-label'),
       loading: $('#loading'),
       loadingBar: $('#loading-bar'),
       loadingPct: $('#loading-pct'),
@@ -70,7 +71,7 @@ export class UI {
     this.cache = {};
     this.bestDistance = Number(localStorage.getItem(LS_BEST_D) || 0);
     this.bestScore = Number(localStorage.getItem(LS_BEST_S) || 0);
-    this.rider = localStorage.getItem(LS_RIDER) === 'xiaoman' ? 'xiaoman' : 'alan';
+    this.rider = localStorage.getItem(LS_RIDER) === 'alan' ? 'alan' : 'xiaoman';
     this.soundOn = localStorage.getItem(LS_SOUND) !== '0';
     this._toastTimers = new Set();
     this._bind();
@@ -102,7 +103,7 @@ export class UI {
       localStorage.setItem(LS_RIDER, id);
       this._applyRider();
       this.handlers.rider?.({ id });
-      this.toast(id === 'xiaoman' ? '小满：交给我吧！' : '阿蓝：这单稳了。', { type: 'good', duration: 1300 });
+      this.toast(id === 'xiaoman' ? '奶盖：交给我吧！' : '蓝莓：这单稳了。', { type: 'good', duration: 1300 });
     });
     // 触屏 / 鼠标点按场景自动开始（开始页）
     this.el.start?.addEventListener('click', (e) => {
@@ -118,6 +119,8 @@ export class UI {
 
   _applyRider() {
     $$('.rider-card', this.el.riderCards).forEach((c) => c.classList.toggle('is-active', c.dataset.rider === this.rider));
+    const name = this.rider === 'xiaoman' ? '奶盖' : '蓝莓';
+    if (this.el.dashLabel) this.el.dashLabel.textContent = `${name}的小电驴 · 时速`;
   }
 
   _applySound() {
@@ -201,7 +204,8 @@ export class UI {
     if (this.cache.distance === v) return;
     this.cache.distance = v;
     this.el.distance.textContent = formatNum(v);
-    this.el.routeMarker.style.left = `${Math.max(0, Math.min(100, (m / CFG.arrival) * 100)).toFixed(2)}%`;
+    const pct = Math.max(0, Math.min(1, m / CFG.arrival));
+    this.el.routeMarker.style.left = `${(4 + pct * 92).toFixed(2)}%`;
   }
 
   setTime(sec) {

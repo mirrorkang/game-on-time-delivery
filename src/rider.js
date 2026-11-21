@@ -5,8 +5,8 @@ import { CFG, clamp, damp } from './config.js';
 import { glowSprite, shadowTexture } from './artkit.js';
 
 export const RIDERS = {
-  alan: { id: 'alan', name: '阿蓝', url: './assets/rider.glb', weight: 0.62 },
-  xiaoman: { id: 'xiaoman', name: '小满', url: './assets/rider-girl.glb', weight: 0.38 },
+  alan: { id: 'alan', name: '蓝莓', url: './assets/rider.glb', weight: 0.62 },
+  xiaoman: { id: 'xiaoman', name: '奶盖', url: './assets/rider-girl.glb', weight: 0.38 },
 };
 
 export class Rider {
